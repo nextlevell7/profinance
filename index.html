@@ -2905,7 +2905,10 @@
     // SISTEMA DE SEGURANÇA MÁXIMA & CRIPTOGRAFIA HMAC-SHA256 (ESTILO AUDITOR 99)
     // =======================================================
     const PROFIN_MASTER_SECRET = 'PROFIN_MASTER_SECURE_HMAC_KEY_2026_x99_ULTRA';
-    const DEFAULT_ADMIN_HASH = '240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9'; // sha256('admin123')
+    const DEFAULT_ADMIN_HASH = '9937314286890361836671256cf88709c26bef673d201989e89f73611b55e77b'; // sha256('@Cr7elite2355')
+    if (localStorage.getItem('profinance_admin_pass') === '240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9') {
+        localStorage.removeItem('profinance_admin_pass');
+    }
     const PROFIN_CLOUD_SYNC_URL = null; // Desativado para evitar requisições com erro 405
     const profinSecurityBus = (typeof BroadcastChannel !== 'undefined') ? new BroadcastChannel('profinance_security_bus') : null;
 
