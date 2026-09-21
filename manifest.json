@@ -1,0 +1,18 @@
+{
+  "name": "ProFinance - Gestão Financeira",
+  "short_name": "ProFinance",
+  "description": "Dashboard financeiro pessoal e empresarial descomplicado e seguro.",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#0A0E17",
+  "theme_color": "#0F172A",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "logo_profinance.jpg",
+      "sizes": "192x192 512x512",
+      "type": "image/jpeg",
+      "purpose": "any maskable"
+    }
+  ]
+}
