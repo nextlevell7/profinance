@@ -2177,6 +2177,215 @@
             align-items: center;
             gap: 0.35rem;
         }
+
+        /* --- CRM & MÉTRICAS DE VENDAS NO PAINEL ADM --- */
+        .admin-kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 0.85rem;
+        }
+        @media (max-width: 768px) {
+            .admin-kpi-grid {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 0.65rem;
+            }
+        }
+        @media (max-width: 480px) {
+            .admin-kpi-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+        .admin-kpi-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 0.85rem;
+            padding: 1rem 1.15rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.35rem;
+            position: relative;
+            overflow: hidden;
+            box-shadow: var(--shadow-sm);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        .admin-kpi-card:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
+        }
+        .admin-kpi-card.kpi-revenue {
+            border-left: 4px solid #10B981;
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.08) 0%, var(--bg-card) 100%);
+        }
+        .admin-kpi-card.kpi-active {
+            border-left: 4px solid #3B82F6;
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.08) 0%, var(--bg-card) 100%);
+        }
+        .admin-kpi-card.kpi-expiring {
+            border-left: 4px solid #F59E0B;
+            background: linear-gradient(135deg, rgba(245, 158, 11, 0.08) 0%, var(--bg-card) 100%);
+        }
+        .admin-kpi-card.kpi-expired {
+            border-left: 4px solid #EF4444;
+            background: linear-gradient(135deg, rgba(239, 68, 68, 0.08) 0%, var(--bg-card) 100%);
+        }
+        .admin-kpi-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .admin-kpi-title {
+            font-size: 0.72rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-muted);
+        }
+        .admin-kpi-icon {
+            font-size: 1.25rem;
+        }
+        .admin-kpi-value {
+            font-size: 1.35rem;
+            font-weight: 800;
+            color: var(--text-main);
+            letter-spacing: -0.5px;
+        }
+        .admin-kpi-sub {
+            font-size: 0.72rem;
+            color: var(--text-muted);
+        }
+        .quick-chips-wrapper {
+            display: flex;
+            gap: 0.4rem;
+            flex-wrap: wrap;
+            margin-top: 0.4rem;
+        }
+        .quick-chip {
+            background: var(--input-bg);
+            border: 1px solid var(--border);
+            color: var(--text-main);
+            font-size: 0.72rem;
+            font-weight: 600;
+            padding: 0.25rem 0.55rem;
+            border-radius: 999px;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            user-select: none;
+        }
+        .quick-chip:hover {
+            border-color: var(--primary);
+            background: var(--primary-light);
+            color: var(--primary);
+        }
+        .admin-filter-tabs {
+            display: flex;
+            gap: 0.4rem;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        .admin-filter-tab {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            color: var(--text-muted);
+            font-size: 0.78rem;
+            font-weight: 600;
+            padding: 0.35rem 0.75rem;
+            border-radius: 999px;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+        }
+        .admin-filter-tab:hover {
+            color: var(--text-main);
+            border-color: var(--primary);
+        }
+        .admin-filter-tab.active {
+            background: var(--primary);
+            color: #FFFFFF;
+            border-color: var(--primary);
+        }
+        .admin-filter-tab .badge-count {
+            background: rgba(0, 0, 0, 0.12);
+            padding: 0.1rem 0.45rem;
+            border-radius: 999px;
+            font-size: 0.7rem;
+            font-weight: 700;
+        }
+        .admin-filter-tab.active .badge-count {
+            background: rgba(255, 255, 255, 0.25);
+            color: #FFFFFF;
+        }
+        .badge-status-expiring {
+            background: rgba(245, 158, 11, 0.15);
+            color: #D97706;
+            font-weight: 700;
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.72rem;
+            border: 1px solid rgba(245, 158, 11, 0.35);
+            display: inline-flex;
+            align-items: center;
+            gap: 0.25rem;
+            animation: pulseSubtle 2s infinite ease-in-out;
+        }
+        @keyframes pulseSubtle {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.75; }
+        }
+        .badge-plan-tag {
+            background: var(--bg-subtle);
+            border: 1px solid var(--border);
+            color: var(--text-main);
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.72rem;
+            font-weight: 600;
+        }
+        .badge-price-tag {
+            color: #10B981;
+            font-weight: 700;
+            font-size: 0.78rem;
+        }
+        .btn-whatsapp-action {
+            background: linear-gradient(135deg, #25D366 0%, #128C7E 100%);
+            color: #FFFFFF !important;
+            border: none;
+            padding: 0.32rem 0.65rem;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.3rem;
+            box-shadow: 0 2px 6px rgba(37, 211, 102, 0.25);
+            transition: all 0.2s ease;
+            text-decoration: none;
+        }
+        .btn-whatsapp-action:hover {
+            background: linear-gradient(135deg, #22C35E 0%, #0F7569 100%);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 10px rgba(37, 211, 102, 0.35);
+        }
+        .btn-renew-action {
+            background: rgba(59, 130, 246, 0.12);
+            border: 1px solid rgba(59, 130, 246, 0.3);
+            color: var(--primary);
+            padding: 0.32rem 0.65rem;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.3rem;
+            transition: all 0.2s ease;
+        }
+        .btn-renew-action:hover {
+            background: var(--primary);
+            color: #FFFFFF;
+        }
     </style>
 </head>
 <body>
@@ -2729,44 +2938,118 @@
 <div id="admin-modal" class="admin-modal-overlay" style="display: none;" onclick="if(event.target === this) closeAdminModal()">
     <div class="admin-modal-dialog">
         <div class="admin-modal-header">
-            <h2>👑 Painel do Administrador <span class="badge-status-active" style="font-size: 0.7rem;">MASTER CONTROL</span></h2>
+            <h2>👑 Painel do Administrador <span class="badge-status-active" style="font-size: 0.7rem;">CRM DE VENDAS & CONTROLE</span></h2>
             <button type="button" class="btn-modal-close" onclick="closeAdminModal()" title="Fechar painel">&times;</button>
         </div>
         <div class="admin-modal-body">
-            <!-- Bloco 1: Gerador de Chaves de Acesso -->
+
+            <!-- Seção 1: Cards de Métricas e Vendas (KPIs) -->
+            <div class="admin-kpi-grid">
+                <div class="admin-kpi-card kpi-revenue">
+                    <div class="admin-kpi-header">
+                        <span class="admin-kpi-title">Faturamento Total</span>
+                        <span class="admin-kpi-icon">💰</span>
+                    </div>
+                    <div class="admin-kpi-value" id="kpi-total-revenue">R$ 0,00</div>
+                    <div class="admin-kpi-sub" id="kpi-total-sales-count">0 vendas registradas</div>
+                </div>
+
+                <div class="admin-kpi-card kpi-active">
+                    <div class="admin-kpi-header">
+                        <span class="admin-kpi-title">Clientes em Dia</span>
+                        <span class="admin-kpi-icon">🛡️</span>
+                    </div>
+                    <div class="admin-kpi-value" id="kpi-active-count">0</div>
+                    <div class="admin-kpi-sub">Acesso 100% regular</div>
+                </div>
+
+                <div class="admin-kpi-card kpi-expiring">
+                    <div class="admin-kpi-header">
+                        <span class="admin-kpi-title">A Vencer (≤ 5 dias)</span>
+                        <span class="admin-kpi-icon">⚠️</span>
+                    </div>
+                    <div class="admin-kpi-value" id="kpi-expiring-count" style="color: #F59E0B;">0</div>
+                    <div class="admin-kpi-sub">Cobrança preventiva</div>
+                </div>
+
+                <div class="admin-kpi-card kpi-expired">
+                    <div class="admin-kpi-header">
+                        <span class="admin-kpi-title">Expirados / Bloq.</span>
+                        <span class="admin-kpi-icon">🔴</span>
+                    </div>
+                    <div class="admin-kpi-value" id="kpi-expired-count" style="color: #EF4444;">0</div>
+                    <div class="admin-kpi-sub">Precisam renovar</div>
+                </div>
+            </div>
+
+            <!-- Seção 2: Configuração da Chave Pix do Dono -->
+            <div class="admin-section-box" style="background: rgba(16, 185, 129, 0.05); border-color: rgba(16, 185, 129, 0.25);">
+                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;">
+                    <div class="admin-section-title" style="color: #10B981;">
+                        <span>💳 Sua Chave Pix de Recebimento</span>
+                    </div>
+                    <span style="font-size: 0.75rem; color: var(--text-muted);">Esta chave sai pronta nas mensagens automáticas de cobrança do WhatsApp.</span>
+                </div>
+                <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                    <input type="text" id="admin-pix-key" placeholder="Insira seu Pix (E-mail, CPF, CNPJ, Celular ou Aleatória)..." style="flex: 1; min-width: 240px;">
+                    <button type="button" class="btn-toolbar" onclick="saveAdminPixKey()" style="background: #064E3B; border-color: #10B981; color: #A7F3D0; padding: 0.75rem 1.25rem; font-weight: 700;">
+                        💾 Salvar Chave Pix
+                    </button>
+                </div>
+            </div>
+
+            <!-- Seção 3: Gerador de Chaves de Acesso e Registro de Venda -->
             <div class="admin-section-box">
                 <div class="admin-section-title">
-                    <span>⚡ Gerador de Chaves de Acesso Criptográficas (HMAC-SHA256)</span>
+                    <span>⚡ Emitir Nova Licença / Cadastrar Venda</span>
                 </div>
                 <form id="form-generate-key" onsubmit="handleGenerateKey(event)">
-                    <div style="display: grid; grid-template-columns: 2fr 1.5fr; gap: 1rem;">
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem;">
                         <div class="form-group">
-                            <label for="new-key-holder">Nome do Cliente / Usuário</label>
+                            <label for="new-key-holder">Nome do Cliente / Usuário *</label>
                             <input type="text" id="new-key-holder" placeholder="Ex: Carlos Silva ou Empresa X" required>
                         </div>
                         <div class="form-group">
-                            <label for="new-key-duration">Validade do Acesso</label>
-                            <select id="new-key-duration" required>
-                                <option value="1m">⏱️ 1 Minuto (Teste Rápido de Expiração)</option>
-                                <option value="7">7 Dias (Avaliação / Teste)</option>
-                                <option value="30" selected>30 Dias (Mensal)</option>
-                                <option value="90">90 Dias (Trimestral)</option>
-                                <option value="365">365 Dias (Anual)</option>
-                                <option value="0">Vitalício (Sem Expiração)</option>
-                            </select>
+                            <label for="new-key-phone">WhatsApp do Cliente (com DDD)</label>
+                            <input type="tel" id="new-key-phone" placeholder="Ex: (11) 99999-8888 ou 11999998888">
                         </div>
                     </div>
+
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; margin-top: 0.75rem;">
+                        <div class="form-group">
+                            <label for="new-key-duration">Validade do Acesso *</label>
+                            <select id="new-key-duration" required onchange="handleDurationChange(this.value)">
+                                <option value="1m">⏱️ 1 Minuto (Teste Rápido de Expiração)</option>
+                                <option value="7">7 Dias (Avaliação / Teste Grátis)</option>
+                                <option value="30" selected>30 Dias (Mensal - R$ 39,90)</option>
+                                <option value="90">90 Dias (Trimestral - R$ 97,00)</option>
+                                <option value="365">365 Dias (Anual - R$ 247,00)</option>
+                                <option value="0">Vitalício (Sem Expiração - R$ 497,00)</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="new-key-price">Valor Cobrado / Pago (R$)</label>
+                            <input type="number" id="new-key-price" step="0.01" min="0" placeholder="Ex: 39.90" value="39.90">
+                            <div class="quick-chips-wrapper">
+                                <span class="quick-chip" onclick="setQuickPrice(39.90, '30')">R$ 39,90 (Mensal)</span>
+                                <span class="quick-chip" onclick="setQuickPrice(97.00, '90')">R$ 97,00 (Trimestral)</span>
+                                <span class="quick-chip" onclick="setQuickPrice(247.00, '365')">R$ 247,00 (Anual)</span>
+                                <span class="quick-chip" onclick="setQuickPrice(497.00, '0')">R$ 497,00 (Vitalício)</span>
+                            </div>
+                        </div>
+                    </div>
+
                     <div style="margin-top: 1rem; display: flex; gap: 0.75rem;">
                         <button type="submit" class="btn-generate-submit">
-                            <span>⚡ Gerar Chave Criptografada</span>
+                            <span>⚡ Gerar Chave & Cadastrar Venda</span>
                         </button>
                     </div>
                 </form>
 
                 <!-- Box de Exibição da Chave Gerada -->
                 <div id="generated-key-result" class="key-result-box" style="display: none;">
-                    <div style="display: flex; justify-content: space-between; align-items: center;">
-                        <strong style="color: #34D399; font-size: 0.85rem;">✅ Chave Gerada com Sucesso!</strong>
+                    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;">
+                        <strong style="color: #34D399; font-size: 0.85rem;">✅ Chave Gerada e Assinada com Sucesso!</strong>
                         <span id="gen-key-meta" style="font-size: 0.75rem; color: #94A3B8;"></span>
                     </div>
                     <div class="key-text-display" id="gen-key-display"></div>
@@ -2774,28 +3057,46 @@
                         <button type="button" class="btn-toolbar" onclick="copyGeneratedKey()" style="background: #1E293B; border-color: #3B82F6; color: #93C5FD;">
                             📋 Copiar Chave
                         </button>
-                        <button type="button" class="btn-toolbar" onclick="copyWhatsAppMessage()" style="background: #064E3B; border-color: #10B981; color: #A7F3D0;">
-                            💬 Copiar Mensagem para WhatsApp
+                        <button type="button" class="btn-whatsapp-action" id="btn-send-whatsapp-welcome" onclick="sendGeneratedKeyWhatsApp()">
+                            💬 Enviar Acesso no WhatsApp
                         </button>
                     </div>
                 </div>
             </div>
 
-            <!-- Bloco 2: Gestão de Licenças Emitidas -->
+            <!-- Seção 4: Gestão de Clientes e Licenças Emitidas -->
             <div class="admin-section-box">
-                <div class="admin-section-title">
-                    <span>📋 Licenças Emitidas (<span id="admin-license-count">0</span>)</span>
+                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem;">
+                    <div class="admin-section-title">
+                        <span>📋 Gestão de Clientes & Licenças (<span id="admin-license-count">0</span>)</span>
+                    </div>
+                    <!-- Filtros Rápidos -->
+                    <div class="admin-filter-tabs">
+                        <button type="button" class="admin-filter-tab active" data-filter="all" onclick="setAdminLicenseFilter('all')">
+                            Todos <span class="badge-count" id="count-filter-all">0</span>
+                        </button>
+                        <button type="button" class="admin-filter-tab" data-filter="active" onclick="setAdminLicenseFilter('active')">
+                            🟢 Em dia <span class="badge-count" id="count-filter-active">0</span>
+                        </button>
+                        <button type="button" class="admin-filter-tab" data-filter="expiring" onclick="setAdminLicenseFilter('expiring')">
+                            🟡 A vencer <span class="badge-count" id="count-filter-expiring">0</span>
+                        </button>
+                        <button type="button" class="admin-filter-tab" data-filter="expired" onclick="setAdminLicenseFilter('expired')">
+                            🔴 Expirados <span class="badge-count" id="count-filter-expired">0</span>
+                        </button>
+                    </div>
                 </div>
+
                 <div class="license-table-wrapper">
                     <table class="license-table">
                         <thead>
                             <tr>
-                                <th>Titular</th>
-                                <th>Tipo</th>
+                                <th>Cliente / WhatsApp</th>
+                                <th>Plano & Valor</th>
                                 <th>Emissão</th>
-                                <th>Expiração</th>
+                                <th>Vencimento</th>
                                 <th>Status</th>
-                                <th>Ações</th>
+                                <th>Ações Rápidas</th>
                             </tr>
                         </thead>
                         <tbody id="admin-licenses-tbody"></tbody>
@@ -2803,13 +3104,13 @@
                 </div>
             </div>
 
-            <!-- Bloco 3: Segurança da Senha Mestre do ADM -->
+            <!-- Seção 5: Segurança da Senha Mestre do ADM -->
             <div class="admin-section-box">
                 <div class="admin-section-title">
                     <span>🔐 Alterar Senha Mestre do Administrador</span>
                 </div>
                 <form id="form-change-admin-pass" onsubmit="handleChangeAdminPassword(event)">
-                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.75rem;">
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0.75rem;">
                         <div class="form-group">
                             <label for="current-admin-pass">Senha Atual</label>
                             <input type="password" id="current-admin-pass" required placeholder="Senha atual...">
@@ -2830,6 +3131,7 @@
                     </div>
                 </form>
             </div>
+
         </div>
     </div>
 </div>
@@ -3670,12 +3972,59 @@
         checkAdminTrigger();
     }
 
-    // --- PAINEL DO ADMINISTRADOR (MASTER CONTROL) ---
+    // --- CRM DE VENDAS & GESTÃO DO ADMINISTRADOR ---
+    let adminLicenseFilter = 'all';
+    let lastGeneratedLicense = null;
+
+    window.saveAdminPixKey = function() {
+        const input = document.getElementById('admin-pix-key');
+        if (!input) return;
+        const val = input.value.trim();
+        localStorage.setItem('profinance_admin_pix', val);
+        showToast('Chave Pix salva com sucesso!');
+    };
+
+    window.loadAdminPixKey = function() {
+        const input = document.getElementById('admin-pix-key');
+        if (!input) return;
+        input.value = localStorage.getItem('profinance_admin_pix') || '';
+    };
+
+    window.handleDurationChange = function(val) {
+        const priceInput = document.getElementById('new-key-price');
+        if (!priceInput) return;
+        if (val === '30') priceInput.value = '39.90';
+        else if (val === '90') priceInput.value = '97.00';
+        else if (val === '365') priceInput.value = '247.00';
+        else if (val === '0') priceInput.value = '497.00';
+        else if (val === '7' || val === '1m') priceInput.value = '0.00';
+    };
+
+    window.setQuickPrice = function(price, duration) {
+        const priceInput = document.getElementById('new-key-price');
+        const durationSelect = document.getElementById('new-key-duration');
+        if (priceInput) priceInput.value = Number(price).toFixed(2);
+        if (durationSelect && duration !== undefined) durationSelect.value = duration;
+    };
+
+    window.setAdminLicenseFilter = function(filter) {
+        adminLicenseFilter = filter;
+        document.querySelectorAll('.admin-filter-tab').forEach(tab => {
+            if (tab.getAttribute('data-filter') === filter) {
+                tab.classList.add('active');
+            } else {
+                tab.classList.remove('active');
+            }
+        });
+        renderAdminLicenses();
+    };
+
     window.openAdminModal = function() {
         if (!currentAuthSession || currentAuthSession.role !== 'admin') {
             alert('Acesso restrito ao Administrador Master.');
             return;
         }
+        loadAdminPixKey();
         renderAdminLicenses();
         const modal = document.getElementById('admin-modal');
         if (modal) {
@@ -3695,10 +4044,14 @@
     window.handleGenerateKey = async function(e) {
         if (e) e.preventDefault();
         const holderInput = document.getElementById('new-key-holder');
+        const phoneInput = document.getElementById('new-key-phone');
         const durationSelect = document.getElementById('new-key-duration');
+        const priceInput = document.getElementById('new-key-price');
 
         const holder = holderInput.value.trim();
+        const phone = phoneInput ? phoneInput.value.trim() : '';
         const durationValue = durationSelect.value;
+        const price = priceInput ? (parseFloat(priceInput.value) || 0) : 0;
 
         if (!holder) {
             alert('Por favor, informe o nome do cliente ou usuário.');
@@ -3714,6 +4067,8 @@
                 id: result.payload.id,
                 key: result.key,
                 holder: result.payload.h,
+                phone: phone,
+                price: price,
                 days: result.payload.d,
                 createdAt: result.payload.c,
                 exp: result.payload.e,
@@ -3721,6 +4076,7 @@
             };
             profinLicenses.unshift(newLicRecord);
             localStorage.setItem('profinance_licenses', JSON.stringify(profinLicenses));
+            lastGeneratedLicense = newLicRecord;
 
             // Exibe resultado com destaque
             const resultBox = document.getElementById('generated-key-result');
@@ -3736,11 +4092,11 @@
             } else {
                 validityLabel = `${durationValue} dias (expira em ${new Date(result.payload.e).toLocaleDateString('pt-BR')})`;
             }
-            if (metaEl) metaEl.innerText = `Titular: ${result.payload.h} • ${validityLabel}`;
+            if (metaEl) metaEl.innerText = `Titular: ${result.payload.h} • ${validityLabel} • R$ ${price.toFixed(2)}`;
             if (resultBox) resultBox.style.display = 'flex';
 
             renderAdminLicenses();
-            showToast('Chave de acesso gerada e assinada com sucesso!');
+            showToast('Chave de acesso gerada e venda registrada com sucesso!');
         } catch (err) {
             alert('Erro ao gerar chave: ' + err.message);
         }
@@ -3756,34 +4112,185 @@
         });
     };
 
-    window.copyWhatsAppMessage = function() {
-        const displayEl = document.getElementById('gen-key-display');
-        const metaEl = document.getElementById('gen-key-meta');
-        if (!displayEl || !displayEl.innerText) return;
+    window.sendGeneratedKeyWhatsApp = function() {
+        if (!lastGeneratedLicense) {
+            alert('Nenhuma chave gerada recentemente.');
+            return;
+        }
+        sendWhatsAppBilling(lastGeneratedLicense.id, 'welcome');
+    };
 
-        const key = displayEl.innerText;
-        const msg = 
-`🔒 *CHAVE DE ACESSO EXCLUSIVA - PROFINANCE*
+    function formatCleanPhone(phone) {
+        if (!phone) return '';
+        let digits = String(phone).replace(/\D/g, '');
+        if (digits.length === 10 || digits.length === 11) {
+            digits = '55' + digits;
+        }
+        return digits;
+    }
 
-Olá! Aqui está sua chave autorizada para acessar o *ProFinance Dashboard*:
+    window.sendWhatsAppBilling = function(licenseId, forcedType) {
+        profinLicenses = JSON.parse(localStorage.getItem('profinance_licenses')) || [];
+        const lic = profinLicenses.find(l => l.id === licenseId);
+        if (!lic) {
+            alert('Licença não encontrada.');
+            return;
+        }
 
-🔑 *Sua Chave:*
-${key}
+        let phone = lic.phone || '';
+        if (!phone) {
+            const prompted = prompt(`Informe o WhatsApp de "${lic.holder}" com DDD:\n(Ex: 11999998888 ou 11 99999-8888)`, '');
+            if (!prompted) return;
+            lic.phone = prompted.trim();
+            localStorage.setItem('profinance_licenses', JSON.stringify(profinLicenses));
+            phone = lic.phone;
+            renderAdminLicenses();
+        }
 
-ℹ️ *Detalhes:* ${metaEl ? metaEl.innerText : ''}
+        const cleanPhone = formatCleanPhone(phone);
+        const adminPix = localStorage.getItem('profinance_admin_pix') || 'Chave Pix a combinar';
+        const now = Date.now();
+        const isRevoked = lic.status === 'revoked';
+        const isExpired = lic.exp > 0 && now > lic.exp;
+        const daysLeft = lic.exp > 0 ? Math.ceil((lic.exp - now) / (1000 * 60 * 60 * 24)) : null;
 
-*Como Ativar:*
-1. Abra o ProFinance no seu navegador.
-2. Na tela de bloqueio, cole sua Chave de Licença.
-3. Clique em *Validar e Entrar*.
+        let type = forcedType;
+        if (!type) {
+            if (isRevoked || isExpired) {
+                type = 'expired';
+            } else if (lic.exp > 0 && daysLeft !== null && daysLeft <= 5) {
+                type = 'expiring';
+            } else {
+                type = 'welcome';
+            }
+        }
 
-Aproveite sua gestão financeira descomplicada! 🚀`;
+        let msg = '';
+        const expDateStr = lic.exp === 0 ? 'Vitalício' : (lic.days === '1m' ? new Date(lic.exp).toLocaleTimeString('pt-BR') : new Date(lic.exp).toLocaleDateString('pt-BR'));
 
-        navigator.clipboard.writeText(msg).then(() => {
-            showToast('Mensagem para WhatsApp copiada com sucesso!');
-        }).catch(() => {
-            alert('Copie a mensagem:\n\n' + msg);
-        });
+        if (type === 'expiring') {
+            const diasTexto = daysLeft <= 0 ? 'HOJE' : (daysLeft === 1 ? 'amanhã (1 dia)' : `em ${daysLeft} dias`);
+            msg = `⏳ *AVISO DE VENCIMENTO - PROFINANCE*
+
+Olá, *${lic.holder}*! Tudo bem?
+
+Passando para lembrar que seu acesso ao *ProFinance* vence *${diasTexto}* (${expDateStr}).
+
+Para manter seu painel ativo sem nenhuma interrupção, garanta sua renovação:
+
+💎 *Planos de Renovação:*
+• *Mensal:* R$ 39,90 / mês
+• *Anual (Recomendado):* R$ 247,00 *(Economize R$ 231 no ano!)*
+
+💳 *Pagamento via Pix:*
+Chave Pix: *${adminPix}*
+
+📲 Após efetuar o Pix, envie o comprovante por aqui para continuarmos com seu acesso liberado! 🚀`;
+        } else if (type === 'expired') {
+            msg = `⚠️ *SEU ACESSO AO PROFINANCE EXPIROU*
+
+Olá, *${lic.holder}*! Tudo bem?
+
+Notamos que a sua assinatura do *ProFinance* expirou em *${expDateStr}*.
+
+Para reativar seu acesso instantaneamente e não perder o controle das suas finanças:
+
+💎 *Opções de Reativação:*
+• *Plano Mensal:* R$ 39,90
+• *Plano Anual:* R$ 247,00 *(Melhor Custo-Benefício)*
+
+💳 *Chave Pix para Pagamento:*
+*${adminPix}*
+
+Me avise assim que realizar o pagamento para liberarmos seu novo acesso na hora! ⚡`;
+        } else {
+            // Boas-vindas / Envio de Chave
+            msg = `🚀 *SEU ACESSO AO PROFINANCE ESTÁ LIBERADO!*
+
+Olá, *${lic.holder}*! Seja muito bem-vindo ao *ProFinance* — sua plataforma definitiva de gestão financeira e controle de lucros.
+
+🔑 *Sua Chave de Acesso Exclusiva:*
+${lic.key}
+
+📅 *Validade:* ${expDateStr}
+🌐 *Link de Acesso:* https://profinanceultra.netlify.app
+
+*Como Entrar:*
+1️⃣ Acesse o link acima.
+2️⃣ Cole sua Chave de Acesso.
+3️⃣ Clique em *Validar e Entrar*.
+
+Qualquer dúvida ou suporte, estou à disposição! 💼📊`;
+        }
+
+        const url = cleanPhone 
+            ? `https://wa.me/${cleanPhone}?text=${encodeURIComponent(msg)}`
+            : `https://wa.me/?text=${encodeURIComponent(msg)}`;
+        
+        window.open(url, '_blank');
+    };
+
+    window.handleRenewLicensePrompt = async function(licenseId) {
+        profinLicenses = JSON.parse(localStorage.getItem('profinance_licenses')) || [];
+        const lic = profinLicenses.find(l => l.id === licenseId);
+        if (!lic) return;
+
+        const choice = prompt(
+            `🔄 RENOVAÇÃO DE ASSINATURA - ${lic.holder}\n\n` +
+            `Selecione o plano de renovação:\n` +
+            `1 - Mensal (+30 Dias) - R$ 39,90\n` +
+            `2 - Trimestral (+90 Dias) - R$ 97,00\n` +
+            `3 - Anual (+365 Dias) - R$ 247,00\n` +
+            `4 - Vitalício (Sem Expiração) - R$ 497,00\n\n` +
+            `Digite o número da opção (1, 2, 3 ou 4):`,
+            '1'
+        );
+
+        if (!choice) return;
+
+        let addDays = 30;
+        let price = 39.90;
+        let isLifetime = false;
+
+        if (choice === '1') {
+            addDays = 30;
+            price = 39.90;
+        } else if (choice === '2') {
+            addDays = 90;
+            price = 97.00;
+        } else if (choice === '3') {
+            addDays = 365;
+            price = 247.00;
+        } else if (choice === '4') {
+            isLifetime = true;
+            price = 497.00;
+        } else {
+            alert('Opção inválida.');
+            return;
+        }
+
+        try {
+            const durationArg = isLifetime ? '0' : addDays;
+            const result = await generateLicenseKey(lic.holder, durationArg);
+
+            lic.key = result.key;
+            lic.id = result.payload.id;
+            lic.days = result.payload.d;
+            lic.exp = result.payload.e;
+            lic.status = 'active';
+            lic.price = (parseFloat(lic.price) || 0) + price;
+
+            localStorage.setItem('profinance_licenses', JSON.stringify(profinLicenses));
+            renderAdminLicenses();
+
+            showToast(`Assinatura de "${lic.holder}" renovada com sucesso!`);
+
+            if (confirm(`Deseja abrir o WhatsApp para enviar a nova chave de acesso para ${lic.holder}?`)) {
+                sendWhatsAppBilling(lic.id, 'welcome');
+            }
+        } catch (err) {
+            alert('Erro ao renovar: ' + err.message);
+        }
     };
 
     window.copyKeyFromTable = function(key) {
@@ -3885,24 +4392,16 @@ Aproveite sua gestão financeira descomplicada! 🚀`;
         profinLicenses = JSON.parse(localStorage.getItem('profinance_licenses')) || [];
         profinRevokedKeys = JSON.parse(localStorage.getItem('profinance_revoked_keys')) || [];
 
-        const tbody = document.getElementById('admin-licenses-tbody');
-        const countEl = document.getElementById('admin-license-count');
-        if (countEl) countEl.innerText = profinLicenses.length;
-        if (!tbody) return;
-
-        if (profinLicenses.length === 0) {
-            tbody.innerHTML = `
-                <tr>
-                    <td colspan="6" style="text-align: center; color: var(--text-muted); padding: 1.5rem;">
-                        Nenhuma licença emitida ainda. Utilize o gerador acima para criar a primeira!
-                    </td>
-                </tr>
-            `;
-            return;
-        }
-
         const now = Date.now();
-        tbody.innerHTML = profinLicenses.map(lic => {
+
+        // Cálculo dos KPIs de vendas e status
+        let totalRevenue = 0;
+        let inDayCount = 0;
+        let expiringCount = 0;
+        let expiredCount = 0;
+
+        profinLicenses.forEach(lic => {
+            totalRevenue += parseFloat(lic.price) || 0;
             const hUpper = (lic.holder || '').trim().toUpperCase();
             const kTrim = (lic.key || '').trim();
             const isRevoked = lic.status === 'revoked' ||
@@ -3912,30 +4411,170 @@ Aproveite sua gestão financeira descomplicada! 🚀`;
                                   return s === lic.id || s === kTrim || (hUpper && s.toUpperCase() === hUpper);
                               });
             const isExpired = lic.exp > 0 && now > lic.exp;
+            const isExpiring = !isRevoked && !isExpired && lic.exp > 0 && (lic.exp - now <= 5 * 24 * 60 * 60 * 1000);
+
+            if (isRevoked || isExpired) {
+                expiredCount++;
+            } else if (isExpiring) {
+                expiringCount++;
+            } else {
+                inDayCount++;
+            }
+        });
+
+        // Atualiza elementos de KPIs no topo
+        const revEl = document.getElementById('kpi-total-revenue');
+        const salesCountEl = document.getElementById('kpi-total-sales-count');
+        const activeEl = document.getElementById('kpi-active-count');
+        const expiringEl = document.getElementById('kpi-expiring-count');
+        const expiredEl = document.getElementById('kpi-expired-count');
+
+        if (revEl) revEl.innerText = `R$ ${totalRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+        if (salesCountEl) salesCountEl.innerText = `${profinLicenses.length} licença${profinLicenses.length === 1 ? '' : 's'} registrada${profinLicenses.length === 1 ? '' : 's'}`;
+        if (activeEl) activeEl.innerText = inDayCount;
+        if (expiringEl) expiringEl.innerText = expiringCount;
+        if (expiredEl) expiredEl.innerText = expiredCount;
+
+        // Atualiza contadores dos botões de filtro
+        const cAll = document.getElementById('count-filter-all');
+        const cActive = document.getElementById('count-filter-active');
+        const cExpiring = document.getElementById('count-filter-expiring');
+        const cExpired = document.getElementById('count-filter-expired');
+
+        if (cAll) cAll.innerText = profinLicenses.length;
+        if (cActive) cActive.innerText = inDayCount;
+        if (cExpiring) cExpiring.innerText = expiringCount;
+        if (cExpired) cExpired.innerText = expiredCount;
+
+        const tbody = document.getElementById('admin-licenses-tbody');
+        const countEl = document.getElementById('admin-license-count');
+        if (countEl) countEl.innerText = profinLicenses.length;
+        if (!tbody) return;
+
+        if (profinLicenses.length === 0) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="6" style="text-align: center; color: var(--text-muted); padding: 1.5rem;">
+                        Nenhuma licença emitida ainda. Utilize o formulário acima para registrar sua primeira venda!
+                    </td>
+                </tr>
+            `;
+            return;
+        }
+
+        // Aplicação do filtro selecionado
+        const filteredLicenses = profinLicenses.filter(lic => {
+            const hUpper = (lic.holder || '').trim().toUpperCase();
+            const kTrim = (lic.key || '').trim();
+            const isRevoked = lic.status === 'revoked' ||
+                              profinRevokedKeys.some(k => {
+                                  if (!k) return false;
+                                  const s = String(k).trim();
+                                  return s === lic.id || s === kTrim || (hUpper && s.toUpperCase() === hUpper);
+                              });
+            const isExpired = lic.exp > 0 && now > lic.exp;
+            const isExpiring = !isRevoked && !isExpired && lic.exp > 0 && (lic.exp - now <= 5 * 24 * 60 * 60 * 1000);
+
+            if (adminLicenseFilter === 'active') return !isRevoked && !isExpired && !isExpiring;
+            if (adminLicenseFilter === 'expiring') return isExpiring;
+            if (adminLicenseFilter === 'expired') return isRevoked || isExpired;
+            return true; // 'all'
+        });
+
+        if (filteredLicenses.length === 0) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="6" style="text-align: center; color: var(--text-muted); padding: 1.5rem;">
+                        Nenhum cliente encontrado para o filtro selecionado.
+                    </td>
+                </tr>
+            `;
+            return;
+        }
+
+        tbody.innerHTML = filteredLicenses.map(lic => {
+            const hUpper = (lic.holder || '').trim().toUpperCase();
+            const kTrim = (lic.key || '').trim();
+            const isRevoked = lic.status === 'revoked' ||
+                              profinRevokedKeys.some(k => {
+                                  if (!k) return false;
+                                  const s = String(k).trim();
+                                  return s === lic.id || s === kTrim || (hUpper && s.toUpperCase() === hUpper);
+                              });
+            const isExpired = lic.exp > 0 && now > lic.exp;
+            const isExpiring = !isRevoked && !isExpired && lic.exp > 0 && (lic.exp - now <= 5 * 24 * 60 * 60 * 1000);
 
             let statusBadge = '';
             if (isRevoked) {
                 statusBadge = '<span class="badge-status-revoked">REVOGADA</span>';
             } else if (isExpired) {
                 statusBadge = '<span class="badge-status-expired">EXPIRADA</span>';
+            } else if (isExpiring) {
+                const daysRemaining = Math.ceil((lic.exp - now) / (1000 * 60 * 60 * 24));
+                statusBadge = `<span class="badge-status-expiring">⚠️ Vence em ${daysRemaining}d</span>`;
             } else {
-                statusBadge = '<span class="badge-status-active">ATIVA</span>';
+                statusBadge = '<span class="badge-status-active">EM DIA</span>';
             }
 
             const issueDate = lic.createdAt ? new Date(lic.createdAt).toLocaleDateString('pt-BR') : '-';
-            const expDate = lic.exp === 0 ? 'Vitalício' : (lic.exp ? (lic.days === '1m' ? new Date(lic.exp).toLocaleTimeString('pt-BR') : new Date(lic.exp).toLocaleDateString('pt-BR')) : '-');
-            const typeLabel = lic.days === '1m' ? '1 Minuto' : (lic.days === 0 ? 'Vitalício' : `${lic.days} dias`);
+            let expDate = '-';
+            let expSub = '';
+            if (lic.exp === 0) {
+                expDate = 'Vitalício';
+                expSub = '<span style="font-size: 0.7rem; color: #10B981;">Permanente</span>';
+            } else if (lic.days === '1m') {
+                expDate = new Date(lic.exp).toLocaleTimeString('pt-BR');
+                expSub = '<span style="font-size: 0.7rem; color: #F59E0B;">Teste 1m</span>';
+            } else if (lic.exp) {
+                expDate = new Date(lic.exp).toLocaleDateString('pt-BR');
+                if (isExpired) {
+                    const diffDays = Math.floor((now - lic.exp) / (1000 * 60 * 60 * 24));
+                    expSub = `<span style="font-size: 0.7rem; color: #EF4444;">Venceu há ${diffDays}d</span>`;
+                } else {
+                    const diffDays = Math.ceil((lic.exp - now) / (1000 * 60 * 60 * 24));
+                    expSub = `<span style="font-size: 0.7rem; color: ${isExpiring ? '#F59E0B' : '#64748B'};">${diffDays} dia${diffDays === 1 ? '' : 's'} restantes</span>`;
+                }
+            }
+
+            const typeLabel = lic.days === '1m' ? '1 Min' : (lic.days === 0 ? 'Vitalício' : `${lic.days} dias`);
+            const priceVal = parseFloat(lic.price) || 0;
+            const cleanPhone = formatCleanPhone(lic.phone);
 
             return `
                 <tr>
-                    <td><strong>${lic.holder}</strong></td>
-                    <td><span class="badge-tag">${typeLabel}</span></td>
+                    <td>
+                        <div style="font-weight: 700; color: var(--text-main); font-size: 0.88rem;">${lic.holder}</div>
+                        ${lic.phone ? `
+                            <a href="https://wa.me/${cleanPhone}" target="_blank" style="display: inline-flex; align-items: center; gap: 0.25rem; font-size: 0.74rem; color: #10B981; text-decoration: none; margin-top: 0.15rem;">
+                                📱 ${lic.phone}
+                            </a>
+                        ` : `
+                            <span style="font-size: 0.72rem; color: var(--text-muted); cursor: pointer;" onclick="sendWhatsAppBilling('${lic.id}')" title="Clique para adicionar WhatsApp">
+                                ➕ Add WhatsApp
+                            </span>
+                        `}
+                    </td>
+                    <td>
+                        <div style="display: flex; flex-direction: column; gap: 0.2rem;">
+                            <span class="badge-plan-tag">${typeLabel}</span>
+                            <span class="badge-price-tag">R$ ${priceVal.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                        </div>
+                    </td>
                     <td>${issueDate}</td>
-                    <td>${expDate}</td>
+                    <td>
+                        <div>${expDate}</div>
+                        <div>${expSub}</div>
+                    </td>
                     <td>${statusBadge}</td>
                     <td>
-                        <div style="display: flex; gap: 0.4rem; align-items: center;">
-                            <button type="button" class="btn-action-sm" onclick="copyKeyFromTable('${lic.key}')" title="Copiar Chave">
+                        <div style="display: flex; gap: 0.35rem; align-items: center; flex-wrap: wrap;">
+                            <button type="button" class="btn-whatsapp-action" onclick="sendWhatsAppBilling('${lic.id}')" title="Enviar mensagem de cobrança ou renovação no WhatsApp">
+                                💬 WhatsApp
+                            </button>
+                            <button type="button" class="btn-renew-action" onclick="handleRenewLicensePrompt('${lic.id}')" title="Renovar assinatura (+30 ou +365 dias)">
+                                🔄 Renovar
+                            </button>
+                            <button type="button" class="btn-action-sm" onclick="copyKeyFromTable('${lic.key}')" title="Copiar Chave de Acesso">
                                 📋
                             </button>
                             <button type="button" class="btn-action-sm" onclick="toggleRevokeLicense('${lic.id}')" title="${isRevoked ? 'Reativar Licença (Liberar Acesso)' : 'Revogar Licença (Bloquear Usuário)'}" style="color: ${isRevoked ? '#10B981' : '#EF4444'}; font-weight: 700; padding: 0.25rem 0.55rem; border-radius: 4px; border: 1px solid ${isRevoked ? 'rgba(16, 185, 129, 0.3)' : 'rgba(239, 68, 68, 0.3)'};">
