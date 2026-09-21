@@ -3519,43 +3519,67 @@
     }
 
     // --- SINCRONIZAÇÃO EM NUVEM E MONITORAMENTO CONTÍNUO DE SEGURANÇA ---
-    async function syncCloudRevocations(mode = 'pull') {
-        if (!PROFIN_CLOUD_SYNC_URL) return;
+    const PROFIN_CLOUD_TOPIC = 'https://ntfy.sh/profinance_security_bus_mbtech_2026';
+
+    async function syncCloudRevocations(mode = 'pull', eventData = null) {
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 1200);
+        const timeoutId = setTimeout(() => controller.abort(), 2000);
 
         try {
-            profinRevokedKeys = JSON.parse(localStorage.getItem('profinance_revoked_keys')) || [];
-            
-            if (mode === 'push') {
-                const payload = {
-                    name: "profinance_revoked",
-                    data: {
-                        revoked: profinRevokedKeys,
-                        updatedAt: Date.now()
-                    }
-                };
-                await fetch(PROFIN_CLOUD_SYNC_URL, {
-                    method: 'PUT',
+            if (mode === 'push' && eventData) {
+                await fetch(PROFIN_CLOUD_TOPIC, {
+                    method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload),
+                    body: JSON.stringify(eventData),
                     signal: controller.signal
                 });
-            } else {
-                const response = await fetch(PROFIN_CLOUD_SYNC_URL, { 
+            } else if (mode === 'pull') {
+                const response = await fetch(`${PROFIN_CLOUD_TOPIC}/json?poll=1`, {
                     cache: 'no-store',
-                    signal: controller.signal 
+                    signal: controller.signal
                 });
                 if (response.ok) {
-                    const resData = await response.json();
-                    if (resData && resData.data && Array.isArray(resData.data.revoked)) {
-                        profinRevokedKeys = resData.data.revoked;
-                        localStorage.setItem('profinance_revoked_keys', JSON.stringify(profinRevokedKeys));
+                    const text = await response.text();
+                    if (text && text.trim()) {
+                        const lines = text.trim().split('\n');
+                        let changed = false;
+                        profinRevokedKeys = JSON.parse(localStorage.getItem('profinance_revoked_keys')) || [];
+
+                        lines.forEach(line => {
+                            try {
+                                const evt = JSON.parse(line);
+                                if (evt && evt.message) {
+                                    const data = JSON.parse(evt.message);
+                                    if (data && data.action === 'REVOKE') {
+                                        const raw = extractRawKey16(data.raw || data.key);
+                                        if (raw && !profinRevokedKeys.includes(raw)) {
+                                            profinRevokedKeys.push(raw);
+                                            changed = true;
+                                        }
+                                        if (data.key && !profinRevokedKeys.includes(data.key)) {
+                                            profinRevokedKeys.push(data.key);
+                                            changed = true;
+                                        }
+                                        if (data.holder && !profinRevokedKeys.includes(data.holder.toUpperCase())) {
+                                            profinRevokedKeys.push(data.holder.toUpperCase());
+                                            changed = true;
+                                        }
+                                    } else if (data && data.action === 'REACTIVATE') {
+                                        profinRevokedKeys = removeKeyFromRevokedList(data.raw || data.key, data.holder, profinRevokedKeys);
+                                        changed = true;
+                                    }
+                                }
+                            } catch (e) {}
+                        });
+
+                        if (changed) {
+                            localStorage.setItem('profinance_revoked_keys', JSON.stringify(profinRevokedKeys));
+                        }
                     }
                 }
             }
         } catch (err) {
-            // Continua localmente sem travar
+            // Silencioso em modo offline
         } finally {
             clearTimeout(timeoutId);
         }
@@ -3776,17 +3800,7 @@
             if (!result.valid) {
                 if (msg) {
                     msg.className = 'gatekeeper-msg msg-error';
-                    let errorHtml = '❌ ' + result.reason;
-                    if (result.reason && result.reason.includes('revogada')) {
-                        errorHtml += `
-                            <div style="margin-top: 0.75rem; padding-top: 0.6rem; border-top: 1px dashed rgba(239, 68, 68, 0.4);">
-                                <button type="button" onclick="handleForceRevalidate()" style="background: rgba(59, 130, 246, 0.15); border: 1px solid #3B82F6; color: #93C5FD; padding: 0.4rem 0.8rem; border-radius: 6px; font-size: 0.78rem; font-weight: 700; cursor: pointer; transition: all 0.2s ease;">
-                                    🔄 O Administrador já reativou? Clique para Liberar
-                                </button>
-                            </div>
-                        `;
-                    }
-                    msg.innerHTML = errorHtml;
+                    msg.innerHTML = '❌ ' + result.reason;
                 }
                 if (btn) {
                     btn.disabled = false;
@@ -3829,51 +3843,6 @@
                 btn.innerHTML = '<span>🔓 Validar e Entrar</span>';
             }
         }
-    };
-
-    window.handleForceRevalidate = async function() {
-        const input = document.getElementById('license-key-input');
-        const msg = document.getElementById('gatekeeper-key-msg');
-        const key = input ? input.value.trim() : '';
-        if (!key) return;
-
-        const raw = extractRawKey16(key);
-
-        // Limpa completamente esta chave da lista de revogados
-        profinRevokedKeys = JSON.parse(localStorage.getItem('profinance_revoked_keys')) || [];
-        profinRevokedKeys = removeKeyFromRevokedList(key, '', profinRevokedKeys);
-
-        // Se houver registro da licença localmente, garante que o status fique ativo
-        profinLicenses = JSON.parse(localStorage.getItem('profinance_licenses')) || [];
-        const lic = profinLicenses.find(l => {
-            const kRaw = extractRawKey16(l.key);
-            const kIdRaw = extractRawKey16(l.id);
-            return (raw && (kRaw === raw || kIdRaw === raw));
-        });
-
-        if (lic) {
-            lic.status = 'active';
-            profinRevokedKeys = removeKeyFromRevokedList(lic.key, lic.holder, profinRevokedKeys);
-            profinRevokedKeys = removeKeyFromRevokedList(lic.id, lic.holder, profinRevokedKeys);
-            localStorage.setItem('profinance_licenses', JSON.stringify(profinLicenses));
-        }
-
-        localStorage.setItem('profinance_revoked_keys', JSON.stringify(profinRevokedKeys));
-
-        if (profinSecurityBus) {
-            profinSecurityBus.postMessage({
-                type: 'REVOCATION_SYNC',
-                keys: profinRevokedKeys,
-                licenses: profinLicenses
-            });
-        }
-
-        if (msg) {
-            msg.className = 'gatekeeper-msg msg-success';
-            msg.innerHTML = '<span>⏳ Revalidando autorização...</span>';
-        }
-
-        await handleActivateKey();
     };
 
     window.handleAdminLogin = async function(e) {
@@ -4418,12 +4387,14 @@ Qualquer dúvida ou suporte, estou à disposição! 💼📊`;
             if (kRaw && !profinRevokedKeys.includes(kRaw)) profinRevokedKeys.push(kRaw);
             if (hUpper && !profinRevokedKeys.includes(hUpper)) profinRevokedKeys.push(hUpper);
             showToast(`Licença de "${lic.holder}" revogada!`);
+            await syncCloudRevocations('push', { action: 'REVOKE', raw: kRaw, key: lic.key, holder: lic.holder });
         } else {
             if (!confirm(`Deseja REATIVAR o acesso de "${lic.holder}"? A chave voltará a funcionar normalmente.`)) return;
             lic.status = 'active';
             profinRevokedKeys = removeKeyFromRevokedList(lic.key, lic.holder, profinRevokedKeys);
             profinRevokedKeys = removeKeyFromRevokedList(lic.id, lic.holder, profinRevokedKeys);
             showToast(`Licença de "${lic.holder}" reativada com sucesso!`);
+            await syncCloudRevocations('push', { action: 'REACTIVATE', raw: kRaw, key: lic.key, holder: lic.holder });
         }
 
         localStorage.setItem('profinance_licenses', JSON.stringify(profinLicenses));
@@ -4438,8 +4409,6 @@ Qualquer dúvida ou suporte, estou à disposição! 💼📊`;
                 licenses: profinLicenses
             });
         }
-
-        await syncCloudRevocations('push');
     };
 
     window.handleDeleteLicenseRecord = async function(keyId) {
@@ -4456,6 +4425,7 @@ Qualquer dúvida ou suporte, estou à disposição! 💼📊`;
             if (kTrim && !profinRevokedKeys.includes(kTrim)) profinRevokedKeys.push(kTrim);
             if (kRaw && !profinRevokedKeys.includes(kRaw)) profinRevokedKeys.push(kRaw);
             if (hUpper && !profinRevokedKeys.includes(hUpper)) profinRevokedKeys.push(hUpper);
+            await syncCloudRevocations('push', { action: 'REVOKE', raw: kRaw, key: lic.key, holder: lic.holder });
         }
 
         profinLicenses = profinLicenses.filter(l => l.id !== keyId);
