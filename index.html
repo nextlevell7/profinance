@@ -2185,7 +2185,7 @@
 <div id="gatekeeper-screen">
     <div class="gatekeeper-card">
         <div class="gatekeeper-brand">
-            <div class="gatekeeper-icon" title="ProFinance Institutional Banking Security">
+            <div class="gatekeeper-icon" id="gatekeeper-bank-logo" onclick="handleBankLogoSecretClick()" style="cursor: pointer;" title="ProFinance Institutional Banking">
                 <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" style="width: 100%; height: 100%; padding: 4px;">
                     <defs>
                         <linearGradient id="gkSilverGrad" x1="0%" y1="0%" x2="100%" y2="100%">
@@ -2241,11 +2241,12 @@
             </h1>
             <span class="gatekeeper-badge">🔒 Proteção Ativa 256-bit</span>
             <p style="font-size: 0.85rem; color: #94A3B8; margin-top: 0.25rem;">
-                Insira sua Chave de Acesso autorizada ou autentique-se como Administrador.
+                Insira sua Chave de Acesso autorizada para entrar no sistema.
             </p>
         </div>
 
-        <div class="gatekeeper-tabs">
+        <!-- Abas de Navegação (OCULTAS POR PADRÃO - Apenas Visíveis para o Dono) -->
+        <div class="gatekeeper-tabs" id="gatekeeper-tabs-bar" style="display: none;">
             <button type="button" class="gatekeeper-tab-btn active" id="tab-btn-client" onclick="switchGatekeeperTab('client')">
                 🔑 Chave de Acesso
             </button>
@@ -2272,7 +2273,7 @@
             <div class="gatekeeper-input-wrapper">
                 <label for="admin-password-input">Senha Mestre do Administrador</label>
                 <input type="password" id="admin-password-input" class="gatekeeper-input" placeholder="Digite sua senha mestre..." required autocomplete="current-password">
-                <small style="font-size: 0.75rem; color: #64748B;">Padrão inicial: <code>admin123</code> (alterável no painel).</small>
+                <small style="font-size: 0.75rem; color: #64748B;">Acesso exclusivo do Administrador Master.</small>
             </div>
             <button type="submit" class="btn-gatekeeper-action" id="btn-admin-login">
                 <span>👑 Autenticar como ADM</span>
@@ -3285,7 +3286,38 @@
         }
     }, true);
 
-    // --- CONTROLE DE UI DO GATEKEEPER ---
+    // --- CONTROLE DE UI DO GATEKEEPER & ATIVAÇÃO SECRETA DO ADMIN ---
+    let bankLogoClicks = 0;
+    let bankLogoTimer = null;
+
+    window.handleBankLogoSecretClick = function() {
+        bankLogoClicks++;
+        clearTimeout(bankLogoTimer);
+        bankLogoTimer = setTimeout(() => { bankLogoClicks = 0; }, 1200);
+
+        if (bankLogoClicks >= 3) {
+            bankLogoClicks = 0;
+            unlockAdminTab();
+            showToast('👑 Modo Administrador Ativado!');
+        }
+    };
+
+    window.unlockAdminTab = function() {
+        const tabsBar = document.getElementById('gatekeeper-tabs-bar');
+        if (tabsBar) {
+            tabsBar.style.display = 'grid';
+            switchGatekeeperTab('admin');
+        }
+    };
+
+    window.checkAdminTrigger = function() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const hasAdminQuery = urlParams.has('admin') || urlParams.has('adm') || urlParams.has('master') || window.location.hash === '#admin';
+        if (hasAdminQuery) {
+            unlockAdminTab();
+        }
+    };
+
     window.switchGatekeeperTab = function(tab) {
         const clientTab = document.getElementById('tab-btn-client');
         const adminTab = document.getElementById('tab-btn-admin');
@@ -3630,6 +3662,9 @@
             app.style.setProperty('display', 'none', 'important');
             app.classList.add('auth-hidden');
         }
+
+        // Verifica se a URL contém ?admin ou #admin para ativar o modo Administrador
+        checkAdminTrigger();
     }
 
     // --- PAINEL DO ADMINISTRADOR (MASTER CONTROL) ---
