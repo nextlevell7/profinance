@@ -2468,8 +2468,8 @@
         <form id="form-gatekeeper-key" class="gatekeeper-panel" onsubmit="handleActivateKey(event)">
             <div class="gatekeeper-input-wrapper">
                 <label for="license-key-input">Chave de Licença do Usuário</label>
-                <input type="text" id="license-key-input" class="gatekeeper-input key-mode" placeholder="PROFIN-XXXXX-XXXXX..." required autocomplete="off" spellcheck="false">
-                <small style="font-size: 0.75rem; color: #64748B;">Fornecida exclusivamente pelo Administrador do projeto.</small>
+                <input type="text" id="license-key-input" class="gatekeeper-input key-mode" placeholder="XXXX-XXXX-XXXX-XXXX" required autocomplete="off" spellcheck="false" maxlength="19" oninput="formatKeyInput(this)">
+                <small style="font-size: 0.75rem; color: #64748B;">Chave de 16 caracteres fornecida pelo Administrador.</small>
             </div>
             <button type="submit" class="btn-gatekeeper-action" id="btn-activate-key">
                 <span>🔓 Validar e Entrar</span>
@@ -2784,7 +2784,7 @@
                     </div>
                     <div class="form-group">
                         <label for="card-holder-input">Nome do Titular</label>
-                        <input type="text" id="card-holder-input" required placeholder="Ex: MATHEUS BRITO">
+                        <input type="text" id="card-holder-input" required placeholder="Ex: TESTE">
                     </div>
                     <div class="form-group">
                         <label for="card-brand-input">Bandeira</label>
@@ -3166,7 +3166,7 @@
         {
             id: 'card_default_itau',
             name: 'Black ITAU',
-            holder: 'MATHEUS BRITO',
+            holder: 'TESTE',
             brand: 'Mastercard',
             lastDigits: '8129',
             limit: 45000.00,
@@ -3178,6 +3178,18 @@
     if (!cards || !Array.isArray(cards)) {
         cards = defaultCards;
         localStorage.setItem('profinance_cards', JSON.stringify(cards));
+    } else {
+        // Se ainda estiver com o titular padrão antigo 'MATHEUS BRITO', atualiza para 'TESTE'
+        let cardUpdated = false;
+        cards.forEach(c => {
+            if (c.holder === 'MATHEUS BRITO') {
+                c.holder = 'TESTE';
+                cardUpdated = true;
+            }
+        });
+        if (cardUpdated) {
+            localStorage.setItem('profinance_cards', JSON.stringify(cards));
+        }
     }
 
     let customOrigins = JSON.parse(localStorage.getItem('profinance_custom_origins')) || [];
@@ -3269,6 +3281,7 @@
         profinLicenses.forEach(lic => {
             const hUpper = (lic.holder || '').trim().toUpperCase();
             const kTrim = (lic.key || '').trim();
+            const kClean = kTrim.replace(/[^A-Z0-9]/gi, '').toUpperCase();
             const kId = (lic.id || '').trim();
 
             if (lic.status === 'active') {
@@ -3276,8 +3289,10 @@
                 profinRevokedKeys = profinRevokedKeys.filter(item => {
                     if (!item) return false;
                     const s = String(item).trim();
+                    const sClean = s.replace(/[^A-Z0-9]/gi, '').toUpperCase();
                     if (kId && s === kId) return false;
                     if (kTrim && s === kTrim) return false;
+                    if (kClean && sClean === kClean) return false;
                     if (hUpper && s.toUpperCase() === hUpper) return false;
                     return true;
                 });
@@ -3285,6 +3300,7 @@
                 // Assegura que licenças revogadas estejam registradas
                 if (kId && !profinRevokedKeys.includes(kId)) profinRevokedKeys.push(kId);
                 if (kTrim && !profinRevokedKeys.includes(kTrim)) profinRevokedKeys.push(kTrim);
+                if (kClean && !profinRevokedKeys.includes(kClean)) profinRevokedKeys.push(kClean);
                 if (hUpper && !profinRevokedKeys.includes(hUpper)) profinRevokedKeys.push(hUpper);
             }
         });
@@ -3293,92 +3309,157 @@
         return profinRevokedKeys;
     }
 
-    // Geração de Chave de Licença Inviolável
+    // Máscara dinâmica para o campo de chave de licença no Gatekeeper
+    window.formatKeyInput = function(el) {
+        if (!el || !el.value) return;
+        if (el.value.startsWith('PROFIN-')) return;
+        let val = el.value.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+        if (val.length > 16) val = val.substring(0, 16);
+        let formatted = '';
+        for (let i = 0; i < val.length; i++) {
+            if (i > 0 && i % 4 === 0) formatted += '-';
+            formatted += val[i];
+        }
+        el.value = formatted;
+    };
+
+    // Geração de Chave de Licença Inviolável de 16 Caracteres (HMAC-SHA256)
     async function generateLicenseKey(holderName, durationDays) {
         const now = Date.now();
         let days = 0;
         let exp = 0;
+        let expMin = 0;
 
         if (durationDays === '1m') {
             days = '1m';
             exp = now + (60 * 1000); // 1 minuto exato (60.000 ms)
+            expMin = Math.ceil(exp / 60000);
         } else {
             days = parseInt(durationDays, 10);
-            exp = days === 0 ? 0 : now + (days * 24 * 60 * 60 * 1000);
+            if (days === 0) {
+                exp = 0;
+                expMin = 0; // 0 = Vitalício
+            } else {
+                exp = now + (days * 24 * 60 * 60 * 1000);
+                expMin = Math.floor(exp / 60000);
+            }
         }
 
-        const keyId = 'K' + now.toString(36).toUpperCase() + Math.random().toString(36).substring(2, 6).toUpperCase();
-        
+        // 8 caracteres de Payload: 5 para data (precisão de minuto Base36) + 3 aleatórios
+        const expPart = expMin.toString(36).toUpperCase().padStart(5, '0');
+        const saltNum = Math.floor(Math.random() * 46656);
+        const saltPart = saltNum.toString(36).toUpperCase().padStart(3, '0');
+        const payloadCode = expPart + saltPart; // 8 chars
+
+        // Assinatura HMAC-SHA256 truncada para 8 caracteres Base36 (36^8 = ~2.8 trilhões de combinações)
+        const fullSig = await hmacSha256(payloadCode, PROFIN_MASTER_SECRET);
+        const sigNum = BigInt('0x' + fullSig.substring(0, 12)) % 2821109907456n;
+        const sigCode = sigNum.toString(36).toUpperCase().padStart(8, '0'); // 8 chars
+
+        const raw16 = payloadCode + sigCode; // 16 caracteres exatos
+        const formattedKey = `${raw16.substring(0, 4)}-${raw16.substring(4, 8)}-${raw16.substring(8, 12)}-${raw16.substring(12, 16)}`;
+
         const payloadObj = {
-            id: keyId,
-            h: holderName.trim().toUpperCase(),
+            id: 'K' + raw16,
+            h: holderName ? holderName.trim().toUpperCase() : 'CLIENTE PROFINANCE',
             d: days,
             e: exp,
             c: now
         };
 
-        const jsonStr = JSON.stringify(payloadObj);
-        const b64Payload = b64EncodeUnicode(jsonStr);
-        const fullSig = await hmacSha256(b64Payload, PROFIN_MASTER_SECRET);
-        const shortSig = fullSig.substring(0, 16).toUpperCase();
-        const key = `PROFIN-${b64Payload}-${shortSig}`;
-
         return {
-            key: key,
+            key: formattedKey,
+            rawKey: raw16,
             payload: payloadObj
         };
     }
 
-    // Validação Matemática de Chave de Licença
+    // Validação Matemática de Chave de Licença (Suporta 16 Caracteres e Legadas)
     async function validateLicenseKey(rawKey) {
         if (!rawKey || typeof rawKey !== 'string') {
             return { valid: false, reason: 'Chave não informada.' };
         }
         const trimmed = rawKey.trim();
-        const parts = trimmed.split('-');
-        if (parts.length !== 3 || parts[0] !== 'PROFIN') {
-            return { valid: false, reason: 'Formato de chave inválido! Padrão: PROFIN-XXXXX-XXXXX' };
+
+        // 1. Suporte retrocompatível para chaves legadas no formato PROFIN-xxx-xxx
+        if (trimmed.startsWith('PROFIN-')) {
+            const parts = trimmed.split('-');
+            if (parts.length === 3) {
+                const b64Payload = parts[1];
+                const signature = parts[2].toUpperCase();
+                const expectedFullSig = await hmacSha256(b64Payload, PROFIN_MASTER_SECRET);
+                const expectedSig = expectedFullSig.substring(0, 16).toUpperCase();
+                if (signature !== expectedSig) {
+                    return { valid: false, reason: 'Assinatura inválida! Chave adulterada.' };
+                }
+                try {
+                    const jsonStr = b64DecodeUnicode(b64Payload);
+                    const payload = JSON.parse(jsonStr);
+                    return checkLicenseStatusAndExpiry(payload, trimmed);
+                } catch (e) {
+                    return { valid: false, reason: 'Dados corrompidos na chave legada.' };
+                }
+            }
         }
 
-        const b64Payload = parts[1];
-        const signature = parts[2].toUpperCase();
-
-        // 1. Verificação matemática da assinatura HMAC-SHA256
-        const expectedFullSig = await hmacSha256(b64Payload, PROFIN_MASTER_SECRET);
-        const expectedSig = expectedFullSig.substring(0, 16).toUpperCase();
-
-        if (signature !== expectedSig) {
-            return { valid: false, reason: 'Assinatura inválida! Chave adulterada ou não autorizada.' };
+        // 2. Validação da Nova Chave de 16 Caracteres (XXXX-XXXX-XXXX-XXXX ou XXXXXXXXXXXXXXXX)
+        const cleanKey = trimmed.replace(/[^A-Z0-9]/gi, '').toUpperCase();
+        if (cleanKey.length !== 16) {
+            return { valid: false, reason: 'Formato inválido! A chave deve conter 16 caracteres (Ex: ABCD-EFGH-IJKL-MNOP).' };
         }
 
-        // 2. Decodificação do Payload
-        let payload;
-        try {
-            const jsonStr = b64DecodeUnicode(b64Payload);
-            payload = JSON.parse(jsonStr);
-        } catch (e) {
-            return { valid: false, reason: 'Dados corrompidos na chave de licença.' };
+        const payloadCode = cleanKey.substring(0, 8);
+        const sigCode = cleanKey.substring(8, 16);
+
+        // 2.1 Verificação matemática da assinatura HMAC-SHA256
+        const fullSig = await hmacSha256(payloadCode, PROFIN_MASTER_SECRET);
+        const sigNum = BigInt('0x' + fullSig.substring(0, 12)) % 2821109907456n;
+        const expectedSig = sigNum.toString(36).toUpperCase().padStart(8, '0');
+
+        if (sigCode !== expectedSig) {
+            return { valid: false, reason: 'Chave de acesso inválida ou não autorizada!' };
         }
 
-        // 3. Verificação de Soberania do Administrador e Revogação
+        // 2.2 Decodificação da validade
+        const expPart = payloadCode.substring(0, 5);
+        const expMin = parseInt(expPart, 36);
+        const exp = expMin === 0 ? 0 : (expMin * 60000);
+
+        const formattedKey = `${cleanKey.substring(0, 4)}-${cleanKey.substring(4, 8)}-${cleanKey.substring(8, 12)}-${cleanKey.substring(12, 16)}`;
+
+        const payload = {
+            id: 'K' + cleanKey,
+            h: 'CLIENTE AUTORIZADO',
+            e: exp,
+            cleanKey: cleanKey
+        };
+
+        return checkLicenseStatusAndExpiry(payload, formattedKey);
+    }
+
+    function checkLicenseStatusAndExpiry(payload, formattedKey) {
         reconcileRevokedKeys();
         profinLicenses = JSON.parse(localStorage.getItem('profinance_licenses')) || [];
         profinRevokedKeys = JSON.parse(localStorage.getItem('profinance_revoked_keys')) || [];
-        const rawClean = rawKey.trim();
+
+        const rawClean = (formattedKey || '').replace(/[^A-Z0-9]/gi, '').toUpperCase();
         const payloadHolder = (payload.h || '').trim().toUpperCase();
         const payloadId = (payload.id || '').trim();
 
         // 3.1 Se o Administrador registrou a licença neste sistema (ou mesma origem):
         const matchingLic = profinLicenses.find(l => {
-            const kTrim = (l.key || '').trim();
+            const kClean = (l.key || '').replace(/[^A-Z0-9]/gi, '').toUpperCase();
             const kId = (l.id || '').trim();
             const hUpper = (l.holder || '').trim().toUpperCase();
             return (payloadId && kId === payloadId) || 
-                   (rawClean && kTrim === rawClean) || 
-                   (payloadHolder && hUpper === payloadHolder);
+                   (rawClean && kClean === rawClean) || 
+                   (payloadHolder && payloadHolder !== 'CLIENTE AUTORIZADO' && hUpper === payloadHolder);
         });
 
         if (matchingLic) {
+            payload.h = matchingLic.holder; // Atualiza o nome do titular
+            payload.id = matchingLic.id;
+
             // Se o Administrador definiu explicitamente como REVOGADA
             if (matchingLic.status === 'revoked') {
                 return { valid: false, reason: 'Esta licença foi revogada pelo Administrador.' };
@@ -3388,11 +3469,8 @@
                 // Remove qualquer resquício de bloqueio desta licença
                 profinRevokedKeys = profinRevokedKeys.filter(item => {
                     if (!item) return false;
-                    const str = String(item).trim();
-                    if (payloadId && str === payloadId) return false;
-                    if (rawClean && str === rawClean) return false;
-                    if (payloadHolder && str.toUpperCase() === payloadHolder) return false;
-                    return true;
+                    const str = String(item).trim().replace(/[^A-Z0-9]/gi, '').toUpperCase();
+                    return str !== payloadId && str !== rawClean;
                 });
                 localStorage.setItem('profinance_revoked_keys', JSON.stringify(profinRevokedKeys));
             }
@@ -3400,7 +3478,7 @@
             // Se a licença não está no histórico do ADM deste navegador, checa a lista de revogados
             const isRevoked = profinRevokedKeys.some(item => {
                 if (!item) return false;
-                const str = String(item).trim();
+                const str = String(item).trim().replace(/[^A-Z0-9]/gi, '').toUpperCase();
                 return (payloadId && str === payloadId) || (rawClean && str === rawClean);
             });
 
