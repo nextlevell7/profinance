@@ -3913,6 +3913,12 @@
 
     // Sincronização mestre do CRM de vendas entre todos os dispositivos (PC, Celular, etc.)
     async function syncCloudCRM(mode = 'pull', force = false) {
+        // BLINDAGEM MÁXIMA DE ACESSO:
+        // A lista completa do CRM com nomes, telefones e chaves só pode ser sincronizada se o Administrador estiver autenticado!
+        if (!currentAuthSession || currentAuthSession.role !== 'admin') {
+            return syncCloudRevocations('pull');
+        }
+
         if (mode === 'push') {
             const now = Date.now();
             if (!force && (now - lastPushTimestamp < MIN_PUSH_INTERVAL_MS)) {
@@ -3959,21 +3965,28 @@
                     });
                 } catch(e) {}
 
-                // 2. Envia para todos os barramentos em nuvem de forma criptografada (AES-GCM 256-bit)
-                const encryptedData = await encryptBusPayload(payload);
-                const busPayload = encryptedData ? {
+                // 2. Transmissão em nuvem: NÃO envia dados pessoais de clientes para serviços públicos terceiros!
+                // Envia apenas avisos anônimos de revogação/reativação cifrados em AES-GCM 256-bit
+                const busPayload = {
+                    action: 'CRM_REVOKE_NOTICE',
+                    sender: profinDeviceId,
+                    revoked: profinRevokedKeys,
+                    timestamp: Date.now()
+                };
+                const encryptedData = await encryptBusPayload(busPayload);
+                const sendPayload = encryptedData ? {
                     action: 'CRM_SECURE_SYNC',
                     sender: profinDeviceId,
                     enc: encryptedData,
                     timestamp: Date.now()
-                } : payload;
+                } : busPayload;
 
                 PROFIN_CLOUD_TOPICS.forEach(topicUrl => {
                     try {
                         fetch(topicUrl, {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify(busPayload),
+                            body: JSON.stringify(sendPayload),
                             keepalive: true,
                             signal: controller.signal
                         }).catch(() => {});
@@ -3982,10 +3995,14 @@
             } else {
                 let foundCloud = false;
 
-                // 1. Tenta carregar do banco persistente do Netlify
+                // 1. Carrega do banco persistente do Netlify com autenticação Bearer
                 try {
+                    const adminToken = localStorage.getItem('profinance_admin_pass') || DEFAULT_ADMIN_HASH;
                     const netlifyRes = await fetch('/.netlify/functions/crm', {
                         cache: 'no-store',
+                        headers: {
+                            'Authorization': `Bearer ${adminToken}`
+                        },
                         signal: controller.signal
                     });
                     if (netlifyRes.ok) {
@@ -3996,47 +4013,6 @@
                         }
                     }
                 } catch (e) {}
-
-                // 2. Tenta puxar dos barramentos em nuvem ntfy em fallback ordenado
-                for (const topicUrl of PROFIN_CLOUD_TOPICS) {
-                    if (foundCloud) break;
-                    try {
-                        const ntfyRes = await fetch(`${topicUrl}/json?poll=1&since=12h`, {
-                            cache: 'no-store',
-                            signal: controller.signal
-                        });
-                        if (ntfyRes.ok) {
-                            const text = await ntfyRes.text();
-                            if (text && text.trim()) {
-                                let latestSync = null;
-                                const lines = text.trim().split('\n');
-                                for (const line of lines) {
-                                    try {
-                                        const evt = JSON.parse(line);
-                                        if (evt && evt.message) {
-                                            let data = typeof evt.message === 'string' ? JSON.parse(evt.message) : evt.message;
-                                            if (data && data.enc) {
-                                                const dec = await decryptBusPayload(data.enc);
-                                                if (dec) data = dec;
-                                            }
-                                            if (data && (data.action === 'CRM_SYNC' || data.action === 'CRM_SECURE_SYNC')) {
-                                                if (!latestSync || (data.timestamp || 0) > (latestSync.timestamp || 0)) {
-                                                    latestSync = data;
-                                                }
-                                            }
-                                        }
-                                    } catch (e) {}
-                                }
-
-                                if (latestSync) {
-                                    foundCloud = true;
-                                    mergeLicensesData(latestSync.licenses, latestSync.revoked, latestSync.deletedIds, latestSync.pix);
-                                    break;
-                                }
-                            }
-                        }
-                    } catch (err) {}
-                }
 
                 // SOBERANIA DE DADOS:
                 // Se este dispositivo possui licenças e a nuvem estava vazia, faz push para alimentar a nuvem
@@ -4053,9 +4029,31 @@
 
     async function syncCloudRevocations(mode = 'pull', eventData = null) {
         if (mode === 'push' && eventData) {
-            await syncCloudCRM('push', true);
+            if (currentAuthSession && currentAuthSession.role === 'admin') {
+                await syncCloudCRM('push', true);
+            }
         } else if (mode === 'pull') {
-            await syncCloudCRM('pull');
+            try {
+                const savedKey = localStorage.getItem('profinance_saved_client_key') || '';
+                const url = savedKey ? `/.netlify/functions/crm?key=${encodeURIComponent(savedKey)}` : '/.netlify/functions/crm';
+                const res = await fetch(url, { cache: 'no-store' });
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data && Array.isArray(data.revoked)) {
+                        profinRevokedKeys = Array.from(new Set([...profinRevokedKeys, ...data.revoked]));
+                        localStorage.setItem('profinance_revoked_keys', JSON.stringify(profinRevokedKeys));
+                        reconcileRevokedKeys();
+                    }
+                    if (data && data.valid === false && data.revoked) {
+                        lockAppImmediately('Sua licença foi revogada pelo Administrador.');
+                    }
+                    if (data && data.valid && data.holder && currentAuthSession && currentAuthSession.role === 'client') {
+                        currentAuthSession.holder = data.holder;
+                        if (data.exp) currentAuthSession.exp = data.exp;
+                        sessionStorage.setItem('profinance_auth_session', JSON.stringify(currentAuthSession));
+                    }
+                }
+            } catch (e) {}
         }
     }
 
@@ -4085,31 +4083,32 @@
                     }
 
                     if (data.action === 'CRM_SYNC' || data.action === 'CRM_SECURE_SYNC') {
-                        // Atualiza dados locais sem disparar push em resposta para evitar loops
-                        mergeLicensesData(data.licenses, data.revoked, data.deletedIds, data.pix);
+                        // Somente o Administrador atualiza dados do CRM
+                        if (currentAuthSession && currentAuthSession.role === 'admin') {
+                            mergeLicensesData(data.licenses, data.revoked, data.deletedIds, data.pix);
+                        }
                         if (typeof verifyActiveSessionContinuously === 'function') {
                             verifyActiveSessionContinuously();
                         }
-                    } else if (data.action === 'REVOKE') {
-                        // Atualiza dados locais sem disparar push em resposta para evitar loops
-                        mergeLicensesData(data.licenses, data.revoked, data.deletedIds, data.pix);
-                        if (typeof verifyActiveSessionContinuously === 'function') {
-                            verifyActiveSessionContinuously();
+                    } else if (data.action === 'CRM_REVOKE_NOTICE' || data.action === 'REVOKE') {
+                        if (Array.isArray(data.revoked)) {
+                            profinRevokedKeys = Array.from(new Set([...profinRevokedKeys, ...data.revoked]));
+                            localStorage.setItem('profinance_revoked_keys', JSON.stringify(profinRevokedKeys));
+                            reconcileRevokedKeys();
                         }
-                    } else if (data.action === 'REVOKE') {
                         const raw = extractRawKey16(data.raw || data.key);
                         if (raw && !profinRevokedKeys.includes(raw)) profinRevokedKeys.push(raw);
                         if (data.key && !profinRevokedKeys.includes(data.key)) profinRevokedKeys.push(data.key);
                         if (data.holder && !profinRevokedKeys.includes(data.holder.toUpperCase())) profinRevokedKeys.push(data.holder.toUpperCase());
                         localStorage.setItem('profinance_revoked_keys', JSON.stringify(profinRevokedKeys));
                         reconcileRevokedKeys();
-                        if (typeof renderAdminLicenses === 'function') renderAdminLicenses();
+                        if (typeof renderAdminLicenses === 'function' && currentAuthSession?.role === 'admin') renderAdminLicenses();
                         if (typeof verifyActiveSessionContinuously === 'function') verifyActiveSessionContinuously();
                     } else if (data.action === 'REACTIVATE') {
                         profinRevokedKeys = removeKeyFromRevokedList(data.raw || data.key, data.holder, profinRevokedKeys);
                         localStorage.setItem('profinance_revoked_keys', JSON.stringify(profinRevokedKeys));
                         reconcileRevokedKeys();
-                        if (typeof renderAdminLicenses === 'function') renderAdminLicenses();
+                        if (typeof renderAdminLicenses === 'function' && currentAuthSession?.role === 'admin') renderAdminLicenses();
                     }
                 } catch (err) {}
             };
@@ -4194,6 +4193,58 @@
         if (keyInput) keyInput.value = '';
 
         showToast(reason || 'Acesso cancelado pelo Administrador!');
+    }
+
+    // =======================================================
+    // SENTINELA DE INTEGRIDADE & ANTI-BYPASS DO GATEKEEPER
+    // =======================================================
+    function isAuthorizedSession() {
+        if (!currentAuthSession) return false;
+        if (currentAuthSession.role === 'admin') {
+            const savedAdminHash = localStorage.getItem('profinance_admin_pass') || DEFAULT_ADMIN_HASH;
+            return (currentAuthSession.holder === 'ADMINISTRADOR MASTER' && savedAdminHash && savedAdminHash.length === 64);
+        }
+        if (currentAuthSession.role === 'client') {
+            if (!currentAuthSession.key || !currentAuthSession.holder) return false;
+            if (currentAuthSession.exp > 0 && Date.now() > currentAuthSession.exp) return false;
+            return true;
+        }
+        return false;
+    }
+
+    let isEnforcingSecurity = false;
+    function enforceSecuritySentinel() {
+        if (isEnforcingSecurity) return;
+        const gatekeeper = document.getElementById('gatekeeper-screen');
+        const app = document.getElementById('app-container');
+
+        if (!isAuthorizedSession()) {
+            // Se o usuário NÃO possui sessão autenticada:
+            if (app && app.style.display !== 'none') {
+                isEnforcingSecurity = true;
+                app.style.setProperty('display', 'none', 'important');
+                app.classList.add('auth-hidden');
+                isEnforcingSecurity = false;
+            }
+            if (!gatekeeper || gatekeeper.style.display === 'none' || gatekeeper.classList.contains('auth-hidden')) {
+                isEnforcingSecurity = true;
+                lockAppImmediately('Acesso bloqueado: sessão não autorizada.');
+                isEnforcingSecurity = false;
+            }
+        }
+    }
+
+    function initSecuritySentinel() {
+        setInterval(enforceSecuritySentinel, 1000);
+        if (typeof MutationObserver !== 'undefined') {
+            const observer = new MutationObserver(() => {
+                enforceSecuritySentinel();
+            });
+            const target = document.body;
+            if (target) {
+                observer.observe(target, { childList: true, subtree: true, attributes: true, attributeFilter: ['style', 'class'] });
+            }
+        }
     }
 
     // Heartbeat contínuo de segurança: revalida a cada 2 segundos e cancela acesso se revogado ou expirado
@@ -4483,6 +4534,10 @@
     };
 
     function unlockApp() {
+        if (!isAuthorizedSession()) {
+            lockAppImmediately('Acesso bloqueado: sessão não autorizada.');
+            return;
+        }
         const gatekeeper = document.getElementById('gatekeeper-screen');
         const app = document.getElementById('app-container');
         const sessionBadge = document.getElementById('auth-session-badge');
@@ -4550,7 +4605,7 @@
         // Auto-cura e saneamento de consistência de licenças
         sanitizeDeletedAndRevokedLists();
         reconcileRevokedKeys();
-        syncCloudCRM('pull');
+        await syncCloudRevocations('pull');
 
         // 1. Verificar se há sessão ativa na sessionStorage (útil para reload do admin)
         const sessionJson = sessionStorage.getItem('profinance_auth_session');
@@ -6252,6 +6307,7 @@ Qualquer dúvida ou suporte, estou à disposição! 💼📊`;
 
     // --- ATUALIZAÇÃO DO DASHBOARD E TABELA ---
     function updateDashboard(refreshCharts = true) {
+        if (!isAuthorizedSession()) return;
         const tableBody = document.getElementById('table-body');
         const filterInput = document.getElementById('month-filter');
         
@@ -6735,6 +6791,7 @@ Qualquer dúvida ou suporte, estou à disposição! 💼📊`;
     purgeDeletedLicenses();
     checkAuthSession();
     initRealtimeSSE();
+    initSecuritySentinel();
 
     // Auto-recuperação com proteção contra loop (mínimo de 8s entre pulls automáticos)
     let lastLifecyclePull = 0;
@@ -6742,7 +6799,11 @@ Qualquer dúvida ou suporte, estou à disposição! 💼📊`;
         const now = Date.now();
         if (now - lastLifecyclePull < 8000) return;
         lastLifecyclePull = now;
-        syncCloudCRM('pull');
+        if (currentAuthSession && currentAuthSession.role === 'admin') {
+            syncCloudCRM('pull');
+        } else {
+            syncCloudRevocations('pull');
+        }
     }
 
     document.addEventListener('visibilitychange', function() {
