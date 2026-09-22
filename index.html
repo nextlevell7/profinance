@@ -3604,13 +3604,18 @@
     }
 
     // --- SINCRONIZAÇÃO EM NUVEM E MONITORAMENTO CONTÍNUO DE SEGURANÇA (CRM & LICENÇAS) ---
-    const PROFIN_CLOUD_TOPIC = 'https://ntfy.sh/profinance_mbtech_live_bus_2026';
+    const PROFIN_CLOUD_TOPICS = [
+        'https://ntfy.sh/profinance_security_bus_mbtech_2026',
+        'https://ntfy.sh/profinance_v2_sync',
+        'https://ntfy.sh/profinance_mbtech_live_bus_2026'
+    ];
+    const PROFIN_CLOUD_TOPIC = PROFIN_CLOUD_TOPICS[0];
     const profinDeviceId = 'dev_' + Math.random().toString(36).substring(2, 9);
     let isSyncingCRM = false;
     let profinSSE = null;
 
     let lastPushTimestamp = 0;
-    const MIN_PUSH_INTERVAL_MS = 2500;
+    const MIN_PUSH_INTERVAL_MS = 1500;
 
     // Verificador canônico de licenças deletadas
     function isLicenseDeleted(lic, deletedIds) {
@@ -3783,16 +3788,18 @@
                     });
                 } catch(e) {}
 
-                // 2. Envia via ntfy.sh (entrega instantânea 0ms via SSE para outros dispositivos + cache de 12 horas)
-                try {
-                    await fetch(PROFIN_CLOUD_TOPIC, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(payload),
-                        keepalive: true,
-                        signal: controller.signal
-                    });
-                } catch(e) {}
+                // 2. Envia para todos os barramentos em nuvem para compatibilidade universal entre aparelhos
+                PROFIN_CLOUD_TOPICS.forEach(topicUrl => {
+                    try {
+                        fetch(topicUrl, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(payload),
+                            keepalive: true,
+                            signal: controller.signal
+                        }).catch(() => {});
+                    } catch(e) {}
+                });
             } else {
                 let foundCloud = false;
 
@@ -3811,38 +3818,42 @@
                     }
                 } catch (e) {}
 
-                // 2. Puxa histórico recente do ntfy.sh (/json?poll=1&since=12h)
-                try {
-                    const ntfyRes = await fetch(`${PROFIN_CLOUD_TOPIC}/json?poll=1&since=12h`, {
-                        cache: 'no-store',
-                        signal: controller.signal
-                    });
-                    if (ntfyRes.ok) {
-                        const text = await ntfyRes.text();
-                        if (text && text.trim()) {
-                            let latestSync = null;
-                            const lines = text.trim().split('\n');
-                            lines.forEach(line => {
-                                try {
-                                    const evt = JSON.parse(line);
-                                    if (evt && evt.message) {
-                                        const data = typeof evt.message === 'string' ? JSON.parse(evt.message) : evt.message;
-                                        if (data && data.action === 'CRM_SYNC') {
-                                            if (!latestSync || (data.timestamp || 0) > (latestSync.timestamp || 0)) {
-                                                latestSync = data;
+                // 2. Tenta puxar dos barramentos em nuvem ntfy em fallback ordenado
+                for (const topicUrl of PROFIN_CLOUD_TOPICS) {
+                    if (foundCloud) break;
+                    try {
+                        const ntfyRes = await fetch(`${topicUrl}/json?poll=1&since=12h`, {
+                            cache: 'no-store',
+                            signal: controller.signal
+                        });
+                        if (ntfyRes.ok) {
+                            const text = await ntfyRes.text();
+                            if (text && text.trim()) {
+                                let latestSync = null;
+                                const lines = text.trim().split('\n');
+                                lines.forEach(line => {
+                                    try {
+                                        const evt = JSON.parse(line);
+                                        if (evt && evt.message) {
+                                            const data = typeof evt.message === 'string' ? JSON.parse(evt.message) : evt.message;
+                                            if (data && data.action === 'CRM_SYNC') {
+                                                if (!latestSync || (data.timestamp || 0) > (latestSync.timestamp || 0)) {
+                                                    latestSync = data;
+                                                }
                                             }
                                         }
-                                    }
-                                } catch (e) {}
-                            });
+                                    } catch (e) {}
+                                });
 
-                            if (latestSync) {
-                                foundCloud = true;
-                                mergeLicensesData(latestSync.licenses, latestSync.revoked, latestSync.deletedIds, latestSync.pix);
+                                if (latestSync) {
+                                    foundCloud = true;
+                                    mergeLicensesData(latestSync.licenses, latestSync.revoked, latestSync.deletedIds, latestSync.pix);
+                                    break;
+                                }
                             }
                         }
-                    }
-                } catch (err) {}
+                    } catch (err) {}
+                }
 
                 // SOBERANIA DE DADOS:
                 // Se este dispositivo possui licenças e a nuvem estava vazia, faz push para alimentar a nuvem
