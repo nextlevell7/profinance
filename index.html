@@ -3310,21 +3310,47 @@
     }
 
     // Deduplicação ativa de listas de licenças com resolução por titular mais recente
+    // Deduplicação de licenças baseada em UID, chaves ativas e chaves vinculadas (previousKeys)
     function deduplicateLicenses(list) {
         if (!Array.isArray(list)) return [];
-        const holderMap = new Map();
+        const licenseMap = new Map();
 
         list.forEach(lic => {
             if (!lic) return;
             const uid = getLicenseUniqueId(lic);
-            const holder = (lic.holder || '').trim().toUpperCase();
-            const keyIdent = holder || uid;
-            if (!keyIdent) return;
+            if (!uid) return;
 
-            if (!holderMap.has(keyIdent)) {
-                holderMap.set(keyIdent, { ...lic });
+            // 1. Procura se já existe um registro mapeado para esta licença
+            let matchKey = null;
+
+            if (licenseMap.has(uid)) {
+                matchKey = uid;
             } else {
-                const existing = holderMap.get(keyIdent);
+                for (const [mapKey, existing] of licenseMap.entries()) {
+                    const exUid = getLicenseUniqueId(existing);
+                    if (exUid === uid) {
+                        matchKey = mapKey;
+                        break;
+                    }
+                    const exPrev = Array.isArray(existing.previousKeys) ? existing.previousKeys : [];
+                    const licPrev = Array.isArray(lic.previousKeys) ? lic.previousKeys : [];
+                    
+                    // Se uma licença tem a chave da outra no histórico de renovações:
+                    if (exPrev.includes(lic.key) || exPrev.includes(lic.id) || exPrev.includes(uid)) {
+                        matchKey = mapKey;
+                        break;
+                    }
+                    if (licPrev.includes(existing.key) || licPrev.includes(existing.id) || licPrev.includes(exUid)) {
+                        matchKey = mapKey;
+                        break;
+                    }
+                }
+            }
+
+            if (!matchKey) {
+                licenseMap.set(uid, { ...lic });
+            } else {
+                const existing = licenseMap.get(matchKey);
                 const licUpdated = lic.updatedAt || lic.createdAt || 0;
                 const existingUpdated = existing.updatedAt || existing.createdAt || 0;
 
@@ -3341,7 +3367,8 @@
 
                 if (licUpdated >= existingUpdated) {
                     const finalPrev = mergedPrevKeys.filter(k => k !== lic.key && k !== lic.id);
-                    holderMap.set(keyIdent, { ...existing, ...lic, previousKeys: finalPrev });
+                    licenseMap.delete(matchKey);
+                    licenseMap.set(uid, { ...existing, ...lic, previousKeys: finalPrev });
                 } else {
                     const finalPrev = mergedPrevKeys.filter(k => k !== existing.key && k !== existing.id);
                     if (!existing.phone && lic.phone) existing.phone = lic.phone;
@@ -3350,7 +3377,8 @@
                 }
             }
         });
-        return Array.from(holderMap.values()).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+
+        return Array.from(licenseMap.values()).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
     }
 
     function isKeyRevokedInList(targetKey, holderName, revokedList) {
@@ -3654,12 +3682,45 @@
     let lastPushTimestamp = 0;
     const MIN_PUSH_INTERVAL_MS = 1500;
 
-    // Verificador canônico de licenças deletadas
+    // Saneamento automático: remove nomes de clientes civis gravados indevidamente em deletedIds e revokedKeys
+    function sanitizeDeletedAndRevokedLists() {
+        let deletedIds = JSON.parse(localStorage.getItem('profinance_deleted_ids')) || [];
+        deletedIds = deletedIds.filter(d => {
+            if (!d) return false;
+            const s = String(d).trim().toUpperCase();
+            if (s === 'TESTE 4' || s === 'TESTE4' || s === 'KTESTE00000000004') return true;
+            // Preserva apenas IDs de licença ou chaves formatadas
+            if (s.startsWith('K') && s.length >= 17) return true;
+            if (s.startsWith('PROFIN-')) return true;
+            if (/^[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}$/.test(s)) return true;
+            if (/^[A-Z0-9]{16}$/.test(s)) return true;
+            return false;
+        }).filter(d => {
+            const s = String(d).trim().toUpperCase();
+            return !s.includes('LEUDIANE'); // Expurga resíduo de Leudiane
+        });
+        localStorage.setItem('profinance_deleted_ids', JSON.stringify(deletedIds));
+
+        let revokedKeys = JSON.parse(localStorage.getItem('profinance_revoked_keys')) || [];
+        revokedKeys = revokedKeys.filter(k => {
+            if (!k) return false;
+            const s = String(k).trim().toUpperCase();
+            if (s.includes('LEUDIANE')) return false;
+            if (s.startsWith('K') && s.length >= 17) return true;
+            if (s.startsWith('PROFIN-')) return true;
+            if (/^[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}$/.test(s)) return true;
+            if (/^[A-Z0-9]{16}$/.test(s)) return true;
+            return false;
+        });
+        localStorage.setItem('profinance_revoked_keys', JSON.stringify(revokedKeys));
+    }
+
+    // Verificador canônico de licenças deletadas (compara por UID/chave técnica, nunca por nome de cliente)
     function isLicenseDeleted(lic, deletedIds) {
         if (!lic) return true;
         const holder = (lic.holder || '').trim().toUpperCase();
         const holderRaw = extractRawKey16(holder);
-        // Expurgo permanente de TESTE 4 solicitado pelo usuário
+        // Expurgo permanente específico de TESTE 4 solicitado pelo usuário
         if (holder === 'TESTE 4' || holder === 'TESTE4' || holderRaw === 'TESTE4') return true;
 
         if (!Array.isArray(deletedIds) || deletedIds.length === 0) return false;
@@ -3680,14 +3741,13 @@
             if (rawKey && (rawKey === dStr || rawKey === dRaw)) return true;
             if (licId && (licId === dStr || licId === dRaw)) return true;
             if (rawId && (rawId === dStr || rawId === dRaw)) return true;
-            if (holder && (holder === dStr || holder === dRaw)) return true;
-            if (holderRaw && (holderRaw === dStr || holderRaw === dRaw)) return true;
         }
         return false;
     }
 
     // Auto-limpeza permanente de licenças removidas
     function purgeDeletedLicenses() {
+        sanitizeDeletedAndRevokedLists();
         let deletedIds = JSON.parse(localStorage.getItem('profinance_deleted_ids')) || [];
         ['TESTE 4', 'TESTE4', 'KTESTE00000000004'].forEach(id => {
             if (!deletedIds.includes(id)) deletedIds.push(id);
@@ -3702,54 +3762,47 @@
 
     // Algoritmo unificado de merge de dados com resolução de conflitos por timestamp e identificador canônico
     function mergeLicensesData(cloudLicenses, cloudRevoked, cloudDeletedIds, cloudPix) {
+        sanitizeDeletedAndRevokedLists();
         let localDeletedIds = JSON.parse(localStorage.getItem('profinance_deleted_ids')) || [];
         const rawDeleted = [...localDeletedIds, ...(cloudDeletedIds || []), 'TESTE 4', 'TESTE4', 'KTESTE00000000004'];
-        const combinedDeletedIds = Array.from(new Set(rawDeleted.map(d => (d || '').toString().trim().toUpperCase()).filter(Boolean)));
+        const combinedDeletedIds = Array.from(new Set(rawDeleted.map(d => (d || '').toString().trim().toUpperCase()).filter(Boolean)))
+            .filter(d => !d.includes('LEUDIANE'));
         localStorage.setItem('profinance_deleted_ids', JSON.stringify(combinedDeletedIds));
 
         const mergedMap = new Map();
-        const holderToUidMap = new Map();
 
         const processLicense = (lic) => {
             if (!lic || isLicenseDeleted(lic, combinedDeletedIds)) return;
             const uid = getLicenseUniqueId(lic);
             if (!uid) return;
-            const holderKey = (lic.holder || '').trim().toUpperCase();
 
-            let existing = mergedMap.get(uid);
-
-            // Se não encontrou pelo UID, checa se há registro pelo mesmo titular (ex: renovação que gerou nova chave)
-            if (!existing && holderKey && holderToUidMap.has(holderKey)) {
-                const prevUid = holderToUidMap.get(holderKey);
-                existing = mergedMap.get(prevUid);
-                if (existing) {
-                    const existingUpdated = existing.updatedAt || existing.createdAt || 0;
-                    const licUpdated = lic.updatedAt || lic.createdAt || 0;
-
-                    const prevExisting = Array.isArray(existing.previousKeys) ? existing.previousKeys : [];
-                    const prevLic = Array.isArray(lic.previousKeys) ? lic.previousKeys : [];
-                    const combinedPrev = Array.from(new Set([...prevExisting, ...prevLic, existing.key, existing.id, lic.key, lic.id].filter(Boolean)));
-
-                    if (licUpdated >= existingUpdated) {
-                        const finalPrev = combinedPrev.filter(k => k !== lic.key && k !== lic.id);
-                        mergedMap.delete(prevUid);
-                        mergedMap.set(uid, { ...existing, ...lic, previousKeys: finalPrev });
-                        holderToUidMap.set(holderKey, uid);
-                        return;
-                    } else {
-                        const finalPrev = combinedPrev.filter(k => k !== existing.key && k !== existing.id);
-                        if (!existing.phone && lic.phone) existing.phone = lic.phone;
-                        if (!existing.price && lic.price) existing.price = lic.price;
-                        existing.previousKeys = finalPrev;
-                        return; // O existente já é mais recente
+            let matchKey = null;
+            if (mergedMap.has(uid)) {
+                matchKey = uid;
+            } else {
+                for (const [mapKey, existing] of mergedMap.entries()) {
+                    const exUid = getLicenseUniqueId(existing);
+                    if (exUid === uid) {
+                        matchKey = mapKey;
+                        break;
+                    }
+                    const exPrev = Array.isArray(existing.previousKeys) ? existing.previousKeys : [];
+                    const licPrev = Array.isArray(lic.previousKeys) ? lic.previousKeys : [];
+                    if (exPrev.includes(lic.key) || exPrev.includes(lic.id) || exPrev.includes(uid)) {
+                        matchKey = mapKey;
+                        break;
+                    }
+                    if (licPrev.includes(existing.key) || licPrev.includes(existing.id) || licPrev.includes(exUid)) {
+                        matchKey = mapKey;
+                        break;
                     }
                 }
             }
 
-            if (!existing) {
+            if (!matchKey) {
                 mergedMap.set(uid, { ...lic, updatedAt: lic.updatedAt || lic.createdAt || Date.now() });
-                if (holderKey) holderToUidMap.set(holderKey, uid);
             } else {
+                const existing = mergedMap.get(matchKey);
                 const existingUpdated = existing.updatedAt || existing.createdAt || 0;
                 const licUpdated = lic.updatedAt || lic.createdAt || 0;
 
@@ -3759,6 +3812,7 @@
 
                 if (licUpdated >= existingUpdated) {
                     const finalPrev = combinedPrev.filter(k => k !== lic.key && k !== lic.id);
+                    mergedMap.delete(matchKey);
                     mergedMap.set(uid, { ...existing, ...lic, previousKeys: finalPrev });
                 } else {
                     const finalPrev = combinedPrev.filter(k => k !== existing.key && k !== existing.id);
@@ -3766,7 +3820,6 @@
                     if (!existing.price && lic.price) existing.price = lic.price;
                     existing.previousKeys = finalPrev;
                 }
-                if (holderKey) holderToUidMap.set(holderKey, uid);
             }
         };
 
@@ -4400,7 +4453,8 @@
     };
 
     async function checkAuthSession() {
-        // Auto-cura de consistência de licenças
+        // Auto-cura e saneamento de consistência de licenças
+        sanitizeDeletedAndRevokedLists();
         reconcileRevokedKeys();
         syncCloudCRM('pull');
 
@@ -4620,7 +4674,8 @@
             const newHolder = (result.payload.h || '').trim().toUpperCase();
             const newHolderRaw = extractRawKey16(newHolder);
 
-            // Remove dos IDs deletados se havia tombstone anterior com mesmo identificador ou titular
+            // Remove dos IDs deletados e revogados qualquer resquício deste titular ou identificador
+            sanitizeDeletedAndRevokedLists();
             let deletedIds = JSON.parse(localStorage.getItem('profinance_deleted_ids')) || [];
             deletedIds = deletedIds.filter(d => {
                 const dStr = (d || '').toString().trim().toUpperCase();
@@ -4631,6 +4686,10 @@
                 return true;
             });
             localStorage.setItem('profinance_deleted_ids', JSON.stringify(deletedIds));
+
+            profinRevokedKeys = removeKeyFromRevokedList(result.key, newHolder, profinRevokedKeys);
+            profinRevokedKeys = removeKeyFromRevokedList(newUid, newHolder, profinRevokedKeys);
+            localStorage.setItem('profinance_revoked_keys', JSON.stringify(profinRevokedKeys));
 
             profinLicenses = deduplicateLicenses([newLicRecord, ...profinLicenses]);
             localStorage.setItem('profinance_licenses', JSON.stringify(profinLicenses));
@@ -4987,14 +5046,15 @@ Qualquer dúvida ou suporte, estou à disposição! 💼📊`;
         let deletedIds = JSON.parse(localStorage.getItem('profinance_deleted_ids')) || [];
         if (targetUid && !deletedIds.includes(targetUid)) deletedIds.push(targetUid);
         if (keyId && !deletedIds.includes(keyId)) deletedIds.push(keyId);
-        if (targetHolder && !deletedIds.includes(targetHolder)) deletedIds.push(targetHolder);
-        if (targetHolderRaw && !deletedIds.includes(targetHolderRaw)) deletedIds.push(targetHolderRaw);
+        if (targetHolder === 'TESTE 4' || targetHolder === 'TESTE4') {
+            if (!deletedIds.includes(targetHolder)) deletedIds.push(targetHolder);
+        }
         localStorage.setItem('profinance_deleted_ids', JSON.stringify(deletedIds));
 
-        // Revoga para garantir bloqueio de segurança
+        // Revoga apenas a chave/UID técnico para garantir o cancelamento do acesso dessa chave
         profinRevokedKeys = JSON.parse(localStorage.getItem('profinance_revoked_keys')) || [];
         if (targetUid && !profinRevokedKeys.includes(targetUid)) profinRevokedKeys.push(targetUid);
-        if (targetHolder && !profinRevokedKeys.includes(targetHolder)) profinRevokedKeys.push(targetHolder);
+        if (keyId && !profinRevokedKeys.includes(keyId)) profinRevokedKeys.push(keyId);
         localStorage.setItem('profinance_revoked_keys', JSON.stringify(profinRevokedKeys));
 
         // Remove imediatamente da lista local
