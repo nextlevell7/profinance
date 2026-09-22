@@ -1,0 +1,644 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>ProFinance - Apresentação Comercial MB Tech</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@600;700;800&display=swap');
+
+        @page {
+            size: A4 portrait;
+            margin: 0;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+        }
+
+        body {
+            background-color: #070B12;
+            color: #F1F5F9;
+        }
+
+        .page {
+            width: 210mm;
+            min-height: 297mm;
+            height: 297mm;
+            padding: 18mm 18mm;
+            page-break-after: always;
+            position: relative;
+            background: radial-gradient(circle at 80% 15%, rgba(56, 189, 248, 0.1) 0%, #070B12 65%);
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            overflow: hidden;
+        }
+
+        /* --- PÁGINA 1: CAPA --- */
+        .cover-content {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            margin-top: 15mm;
+            gap: 5mm;
+        }
+
+        .cover-logo-box {
+            width: 85px;
+            height: 85px;
+            background: linear-gradient(135deg, #1E293B 0%, #0A0E17 100%);
+            border: 2px solid rgba(255, 255, 255, 0.15);
+            border-radius: 22px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.7), 0 0 35px rgba(56, 189, 248, 0.25);
+            margin-bottom: 2mm;
+        }
+
+        /* NOME DO SISTEMA GIGANTE E DESTACADO */
+        .system-main-name {
+            font-size: 46pt;
+            font-weight: 900;
+            line-height: 1;
+            letter-spacing: -1.5px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+        }
+
+        .brand-pro {
+            color: #FFFFFF;
+        }
+
+        .brand-finance {
+            background: linear-gradient(135deg, #38BDF8 0%, #3B82F6 60%, #60A5FA 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .brand-badge {
+            background: rgba(56, 189, 248, 0.12);
+            border: 1px solid rgba(56, 189, 248, 0.35);
+            color: #38BDF8;
+            padding: 5px 16px;
+            border-radius: 999px;
+            font-size: 10pt;
+            font-weight: 800;
+            letter-spacing: 1.2px;
+            text-transform: uppercase;
+        }
+
+        .cover-title {
+            font-size: 26pt;
+            font-weight: 800;
+            line-height: 1.2;
+            letter-spacing: -0.5px;
+            color: #E2E8F0;
+            margin-top: 2mm;
+        }
+
+        .cover-title span {
+            background: linear-gradient(135deg, #FFFFFF 0%, #CBD5E1 50%, #94A3B8 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .cover-subtitle {
+            font-size: 13.5pt;
+            color: #94A3B8;
+            max-width: 155mm;
+            line-height: 1.5;
+            font-weight: 500;
+        }
+
+        .cover-cards-preview {
+            display: flex;
+            gap: 10px;
+            margin-top: 3mm;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .preview-pill {
+            background: #0F172A;
+            border: 1px solid #1E293B;
+            padding: 8px 14px;
+            border-radius: 12px;
+            font-size: 9.5pt;
+            font-weight: 600;
+            color: #E2E8F0;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .cover-footer {
+            border-top: 1px solid #1E293B;
+            padding-top: 5mm;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 8.5pt;
+            color: #64748B;
+        }
+
+        /* --- PÁGINA 2: PROBLEMA & SOLUÇÃO --- */
+        .section-header {
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+            margin-bottom: 5mm;
+        }
+
+        .section-tag {
+            color: #38BDF8;
+            font-size: 8.5pt;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .section-title {
+            font-size: 22pt;
+            font-weight: 800;
+            color: #FFFFFF;
+            letter-spacing: -0.5px;
+        }
+
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 5mm;
+            margin-bottom: 5mm;
+        }
+
+        .card-problem {
+            background: rgba(239, 68, 68, 0.05);
+            border: 1px solid rgba(239, 68, 68, 0.25);
+            border-radius: 16px;
+            padding: 5mm;
+            display: flex;
+            flex-direction: column;
+            gap: 3.5mm;
+        }
+
+        .card-solution {
+            background: rgba(16, 185, 129, 0.05);
+            border: 1px solid rgba(16, 185, 129, 0.25);
+            border-radius: 16px;
+            padding: 5mm;
+            display: flex;
+            flex-direction: column;
+            gap: 3.5mm;
+        }
+
+        .card-box-title {
+            font-size: 12pt;
+            font-weight: 800;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .list-items {
+            display: flex;
+            flex-direction: column;
+            gap: 3mm;
+            font-size: 9pt;
+            line-height: 1.4;
+            color: #CBD5E1;
+        }
+
+        .list-items li {
+            list-style: none;
+            display: flex;
+            align-items: flex-start;
+            gap: 8px;
+        }
+
+        .highlight-banner {
+            background: linear-gradient(135deg, #1E293B 0%, #0F172A 100%);
+            border: 1px solid #334155;
+            border-radius: 16px;
+            padding: 5mm 7mm;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 6mm;
+        }
+
+        .banner-stat {
+            text-align: center;
+        }
+
+        .banner-stat-number {
+            font-size: 24pt;
+            font-weight: 800;
+            color: #10B981;
+            font-family: 'Space Grotesk', sans-serif;
+        }
+
+        .banner-stat-desc {
+            font-size: 8pt;
+            color: #94A3B8;
+            font-weight: 600;
+        }
+
+        /* --- PÁGINA 3: RECURSOS EXCLUSIVOS --- */
+        .features-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 4.5mm;
+            margin-bottom: 5mm;
+        }
+
+        .feature-card {
+            background: #0F172A;
+            border: 1px solid #1E293B;
+            border-radius: 14px;
+            padding: 4.5mm;
+            display: flex;
+            flex-direction: column;
+            gap: 2.5mm;
+        }
+
+        .feature-icon {
+            font-size: 18pt;
+        }
+
+        .feature-name {
+            font-size: 11.5pt;
+            font-weight: 700;
+            color: #FFFFFF;
+        }
+
+        .feature-desc {
+            font-size: 8.2pt;
+            color: #94A3B8;
+            line-height: 1.45;
+        }
+
+        /* --- PÁGINA 4: PLANOS & CTA --- */
+        .pricing-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 5mm;
+            margin-top: 3mm;
+            margin-bottom: 5mm;
+        }
+
+        .pricing-card {
+            background: #0F172A;
+            border: 1px solid #1E293B;
+            border-radius: 16px;
+            padding: 6mm;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            position: relative;
+        }
+
+        .pricing-card.vip {
+            border: 2px solid #3B82F6;
+            background: linear-gradient(180deg, rgba(59, 130, 246, 0.12) 0%, #0F172A 100%);
+            box-shadow: 0 15px 35px rgba(59, 130, 246, 0.25);
+        }
+
+        .badge-recommended {
+            position: absolute;
+            top: -11px;
+            right: 18px;
+            background: linear-gradient(135deg, #3B82F6 0%, #1D4ED8 100%);
+            color: #FFFFFF;
+            padding: 3px 12px;
+            border-radius: 999px;
+            font-size: 7.5pt;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .plan-name {
+            font-size: 13pt;
+            font-weight: 800;
+            color: #FFFFFF;
+        }
+
+        .plan-price {
+            font-size: 26pt;
+            font-weight: 800;
+            color: #FFFFFF;
+            font-family: 'Space Grotesk', sans-serif;
+            margin: 2mm 0;
+        }
+
+        .plan-price span {
+            font-size: 10pt;
+            color: #94A3B8;
+            font-weight: 500;
+        }
+
+        .plan-features {
+            display: flex;
+            flex-direction: column;
+            gap: 2mm;
+            margin: 3mm 0;
+            font-size: 8.2pt;
+            color: #CBD5E1;
+        }
+
+        .cta-box {
+            background: linear-gradient(135deg, #0A2540 0%, #081225 100%);
+            border: 2px solid #2563EB;
+            border-radius: 16px;
+            padding: 5mm 7mm;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 2.5mm;
+        }
+
+        .cta-title {
+            font-size: 13pt;
+            font-weight: 800;
+            color: #FFFFFF;
+        }
+
+        .cta-pix {
+            background: rgba(16, 185, 129, 0.15);
+            border: 1px dashed #10B981;
+            padding: 4px 14px;
+            border-radius: 8px;
+            font-size: 9.5pt;
+            font-weight: 700;
+            color: #34D399;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .cta-link {
+            font-size: 8.5pt;
+            color: #93C5FD;
+            text-decoration: none;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- PÁGINA 1: CAPA -->
+    <div class="page">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div style="display: flex; align-items: center; gap: 6px;">
+                <span style="font-weight: 900; font-size: 13pt; letter-spacing: 1.5px; color: #FFFFFF;">MB TECH</span>
+                <span style="font-size: 8pt; background: #1E293B; padding: 2px 6px; border-radius: 4px; color: #94A3B8; font-weight: 700;">SOFTWARE HOUSE</span>
+            </div>
+            <span style="font-size: 8.5pt; color: #64748B; font-weight: 600;">CNPJ: 69.234.012/0001-87</span>
+        </div>
+
+        <div class="cover-content">
+            <!-- Ícone Institucional do Banco -->
+            <div class="cover-logo-box">
+                <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" style="width: 50px; height: 50px;">
+                    <path d="M32 9L10 22H54L32 9Z" fill="#F1F5F9" stroke="#FFFFFF" stroke-width="1.5" stroke-linejoin="round"/>
+                    <rect x="8" y="22" width="48" height="4.5" fill="#CBD5E1"/>
+                    <rect x="12" y="26.5" width="6" height="16" fill="#FFFFFF"/>
+                    <rect x="23" y="26.5" width="6" height="16" fill="#FFFFFF"/>
+                    <rect x="35" y="26.5" width="6" height="16" fill="#FFFFFF"/>
+                    <rect x="46" y="26.5" width="6" height="16" fill="#FFFFFF"/>
+                    <rect x="8" y="42.5" width="48" height="4" fill="#CBD5E1"/>
+                    <rect x="5" y="46.5" width="54" height="4.5" fill="#94A3B8"/>
+                </svg>
+            </div>
+
+            <!-- NOME DO SISTEMA EM GRANDE DESTAQUE -->
+            <div class="system-main-name">
+                <span class="brand-pro">Pro</span><span class="brand-finance">Finance</span>
+            </div>
+
+            <div class="brand-badge">Sistema de Inteligência Financeira</div>
+
+            <h1 class="cover-title">
+                Domine o seu Dinheiro.<br>
+                <span>Multiplique seu Lucro.</span>
+            </h1>
+
+            <p class="cover-subtitle">
+                O ProFinance é a plataforma definitiva desenvolvida pela MB Tech para autônomos, MEIs e pessoas que querem ter controle absoluto das suas finanças direto no celular e computador.
+            </p>
+
+            <div class="cover-cards-preview">
+                <div class="preview-pill">📱 Aplicativo no Celular (PWA)</div>
+                <div class="preview-pill">💳 Controle de Cartões & Faturas</div>
+                <div class="preview-pill">📊 Gráficos em Tempo Real</div>
+                <div class="preview-pill">🔒 Segurança 256-bit</div>
+            </div>
+        </div>
+
+        <div class="cover-footer">
+            <span>© 2026 MB Tech • Desenvolvido por Matheus Brito</span>
+            <span>profinancemax.netlify.app</span>
+        </div>
+    </div>
+
+    <!-- PÁGINA 2: O PROBLEMA VS A SOLUÇÃO -->
+    <div class="page">
+        <div>
+            <div class="section-header">
+                <span class="section-tag">ProFinance • Diagnóstico Financeiro</span>
+                <h2 class="section-title">Por que 85% das Pessoas Perdem Dinheiro sem Perceber?</h2>
+            </div>
+
+            <div class="grid-2">
+                <div class="card-problem">
+                    <div class="card-box-title" style="color: #EF4444;">
+                        <span>❌ O Caos das Finanças Comuns</span>
+                    </div>
+                    <ul class="list-items">
+                        <li><span>⚠️</span> <strong>Faturas Surpresa:</strong> Comprar no cartão de crédito sem saber exatamente quanto já foi gasto do limite.</li>
+                        <li><span>⚠️</span> <strong>Gastos Fantasmas:</strong> Pequenos gastos diários no Pix que somados levam mais de R$ 800 do seu salário todo mês.</li>
+                        <li><span>⚠️</span> <strong>Planilhas Chatas:</strong> Planilhas do Excel pesadas, difíceis de mexer no celular e que você abandona em 3 dias.</li>
+                        <li><span>⚠️</span> <strong>Insegurança:</strong> Trabalhar duro o mês inteiro e chegar no dia 30 sem saber para onde o dinheiro foi.</li>
+                    </ul>
+                </div>
+
+                <div class="card-solution">
+                    <div class="card-box-title" style="color: #10B981;">
+                        <span>✅ A Clareza com o ProFinance</span>
+                    </div>
+                    <ul class="list-items">
+                        <li><span>💎</span> <strong>Dashboard Intuitivo:</strong> Veja seu saldo real, receitas e despesas com 1 toque no celular.</li>
+                        <li><span>💎</span> <strong>Cartões sob Controle:</strong> Limite disponível e usado calculados automaticamente em tempo real.</li>
+                        <li><span>💎</span> <strong>Gráficos Visuais:</strong> Descubra instantaneamente onde você está gastando mais para cortar desperdícios.</li>
+                        <li><span>💎</span> <strong>Liberdade e Paz Mental:</strong> Saiba exatamente quanto dinheiro vai sobrar no final de cada mês.</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="highlight-banner">
+                <div>
+                    <h3 style="font-size: 12.5pt; font-weight: 800; color: #FFFFFF; margin-bottom: 2mm;">
+                        Economia Média Comprovada
+                    </h3>
+                    <p style="font-size: 8.5pt; color: #94A3B8; max-width: 110mm;">
+                        Usuários do ProFinance conseguem economizar em média até <strong>25% a mais</strong> todos os meses apenas identificando vazamentos de dinheiro nos primeiros 30 dias.
+                    </p>
+                </div>
+                <div class="banner-stat">
+                    <div class="banner-stat-number">+ R$ 680</div>
+                    <div class="banner-stat-desc">Economia média mensal</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="cover-footer">
+            <span>ProFinance by MB Tech • Inteligência em Gestão</span>
+            <span>Página 02</span>
+        </div>
+    </div>
+
+    <!-- PÁGINA 3: RECURSOS EXCLUSIVOS -->
+    <div class="page">
+        <div>
+            <div class="section-header">
+                <span class="section-tag">Recursos do ProFinance</span>
+                <h2 class="section-title">Tudo o que Você Precisa em um Único Lugar</h2>
+            </div>
+
+            <div class="features-grid">
+                <div class="feature-card">
+                    <span class="feature-icon">📱</span>
+                    <h4 class="feature-name">Aplicativo Web PWA</h4>
+                    <p class="feature-desc">
+                        Instale na tela inicial do seu celular (iPhone ou Android) em 5 segundos. Não ocupa memória do aparelho e abre instantaneamente.
+                    </p>
+                </div>
+
+                <div class="feature-card">
+                    <span class="feature-icon">💳</span>
+                    <h4 class="feature-name">Gestão Total de Cartões</h4>
+                    <p class="feature-desc">
+                        Cadastre seus cartões de crédito com limite, fatura e acompanhe em tempo real a porcentagem do limite utilizado para evitar juros.
+                    </p>
+                </div>
+
+                <div class="feature-card">
+                    <span class="feature-icon">📊</span>
+                    <h4 class="feature-name">Analytics & Gráficos Interativos</h4>
+                    <p class="feature-desc">
+                        Gráficos dinâmicos que separam seus gastos por categoria: alimentação, transporte, moradia, contas fixas e lazer.
+                    </p>
+                </div>
+
+                <div class="feature-card">
+                    <span class="feature-icon">🎯</span>
+                    <h4 class="feature-name">Metas e Teto de Gastos</h4>
+                    <p class="feature-desc">
+                        Defina metas de economia mensal e seja avisado quando estiver perto de ultrapassar o limite que você estipulou.
+                    </p>
+                </div>
+
+                <div class="feature-card">
+                    <span class="feature-icon">🔒</span>
+                    <h4 class="feature-name">Segurança Militar 256-bit</h4>
+                    <p class="feature-desc">
+                        Acesso protegido por chaves criptográficas exclusivas. Seus dados financeiros são privados e pertencem exclusivamente a você.
+                    </p>
+                </div>
+
+                <div class="feature-card">
+                    <span class="feature-icon">📁</span>
+                    <h4 class="feature-name">Exportação & Backup em 1 Clique</h4>
+                    <p class="feature-desc">
+                        Exporte relatórios completos em Excel (CSV) e JSON para o seu contador ou para guardar histórico seguro no computador.
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <div class="cover-footer">
+            <span>ProFinance by MB Tech • Inovação e Tecnologia</span>
+            <span>Página 03</span>
+        </div>
+    </div>
+
+    <!-- PÁGINA 4: PLANOS & CTA -->
+    <div class="page">
+        <div>
+            <div class="section-header">
+                <span class="section-tag">Invista no seu Controle Financeiro</span>
+                <h2 class="section-title">Escolha o Plano Ideal do ProFinance</h2>
+            </div>
+
+            <div class="pricing-grid">
+                <!-- Plano Mensal -->
+                <div class="pricing-card">
+                    <div>
+                        <div class="plan-name">Plano Mensal</div>
+                        <div class="plan-price">R$ 39,90 <span>/ mês</span></div>
+                        <p style="font-size: 8pt; color: #94A3B8;">Ideal para quem quer testar e organizar o mês imediatamente.</p>
+                        
+                        <div class="plan-features">
+                            <div>✔ Acesso total ao ProFinance</div>
+                            <div>✔ Celular (PWA) e Computador</div>
+                            <div>✔ Gestão de Cartões de Crédito</div>
+                            <div>✔ Gráficos e Metas Financeiras</div>
+                            <div>✔ Suporte Direto via WhatsApp</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Plano Anual VIP -->
+                <div class="pricing-card vip">
+                    <div class="badge-recommended">MAIS VANTAJOSO</div>
+                    <div>
+                        <div class="plan-name">Plano Anual VIP</div>
+                        <div class="plan-price">R$ 247,00 <span>/ ano</span></div>
+                        <p style="font-size: 8pt; color: #34D399; font-weight: 700;">Economize R$ 231 no ano (Apenas R$ 0,67 por dia!)</p>
+                        
+                        <div class="plan-features">
+                            <div>✔ <strong>12 Meses de Acesso Ininterrupto</strong></div>
+                            <div>✔ Celular (PWA) e Computador</div>
+                            <div>✔ Todas as Atualizações Incluídas</div>
+                            <div>✔ Gestão de Cartões, Gráficos e Metas</div>
+                            <div>✔ Suporte Prioritário VIP da MB Tech</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Box de Ação Direta -->
+            <div class="cta-box">
+                <h3 class="cta-title">🚀 Como Ativar seu Acesso Imediatamente:</h3>
+                <p style="font-size: 8.5pt; color: #CBD5E1; max-width: 140mm;">
+                    1. Efetue o pagamento do plano escolhido via Pix oficial da <strong>MB Tech</strong>.<br>
+                    2. Envie o comprovante no WhatsApp.<br>
+                    3. Você recebe sua <strong>Chave Exclusiva de 16 Dígitos</strong> e começa a usar na hora!
+                </p>
+                <div class="cta-pix">
+                    💳 Chave Pix CNPJ: <strong>69.234.012/0001-87</strong> (MB Tech)
+                </div>
+                <div style="margin-top: 1mm;">
+                    <a href="https://profinancemax.netlify.app" class="cta-link">🌐 Acesse a plataforma: <strong>profinancemax.netlify.app</strong></a>
+                </div>
+            </div>
+        </div>
+
+        <div class="cover-footer">
+            <span>Desenvolvido e Distribuído por MB Tech • CNPJ: 69.234.012/0001-87</span>
+            <span>Página 04</span>
+        </div>
+    </div>
+
+</body>
+</html>
