@@ -2478,6 +2478,16 @@
                 <span>🔓 Validar e Entrar</span>
             </button>
             <div id="gatekeeper-key-msg" class="gatekeeper-msg"></div>
+
+            <!-- Divisor e Ações de Conversão / Venda -->
+            <div style="margin-top: 1.1rem; padding-top: 0.95rem; border-top: 1px solid rgba(255,255,255,0.08); display: flex; flex-direction: column; gap: 0.65rem; text-align: center;">
+                <button type="button" onclick="openBuyAccessWhatsApp()" style="display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; background: linear-gradient(135deg, #10B981 0%, #059669 100%); color: #FFFFFF; border: none; padding: 0.75rem 1rem; border-radius: 0.5rem; font-weight: 700; font-size: 0.88rem; cursor: pointer; box-shadow: 0 4px 14px rgba(16, 185, 129, 0.3); transition: all 0.2s ease;">
+                    <span>💬 Não tem uma chave? Adquira no WhatsApp</span>
+                </button>
+                <a href="apresentacao_profinance.html" target="_blank" style="color: #93C5FD; text-decoration: none; font-size: 0.8rem; display: inline-flex; align-items: center; justify-content: center; gap: 0.35rem; opacity: 0.9; margin-top: 0.15rem;">
+                    <span>📄 Conhecer Recursos e Planos do ProFinance ↗</span>
+                </a>
+            </div>
         </form>
 
         <!-- Aba 2: Login do Administrador -->
@@ -2494,6 +2504,9 @@
         </form>
 
         <div class="gatekeeper-footer">
+            <div style="font-size: 0.76rem; color: #64748B; margin-bottom: 0.45rem;">
+                📲 <span>Dica: No celular, abra o menu do navegador e toque em <strong>"Adicionar à Tela de Início"</strong> para usar como app.</span>
+            </div>
             <span>🛡️ Auditoria Criptográfica HMAC-SHA256 • Todos os direitos reservados</span>
         </div>
     </div>
@@ -3287,6 +3300,51 @@
         }).join(''));
     }
 
+    // Criptografia e decodificação blindada de barramento (AES-GCM 256-bit com Web Crypto)
+    async function getBusCryptoKey() {
+        const keyHash = await window.crypto.subtle.digest('SHA-256', new TextEncoder().encode(PROFIN_MASTER_SECRET));
+        return window.crypto.subtle.importKey('raw', keyHash, { name: 'AES-GCM' }, false, ['encrypt', 'decrypt']);
+    }
+
+    async function encryptBusPayload(obj) {
+        try {
+            const key = await getBusCryptoKey();
+            const iv = window.crypto.getRandomValues(new Uint8Array(12));
+            const encoded = new TextEncoder().encode(JSON.stringify(obj));
+            const ciphertext = await window.crypto.subtle.encrypt({ name: 'AES-GCM', iv: iv }, key, encoded);
+            const combined = new Uint8Array(iv.length + ciphertext.byteLength);
+            combined.set(iv, 0);
+            combined.set(new Uint8Array(ciphertext), iv.length);
+            let binary = '';
+            for (let i = 0; i < combined.length; i++) {
+                binary += String.fromCharCode(combined[i]);
+            }
+            return btoa(binary);
+        } catch (e) {
+            return null;
+        }
+    }
+
+    async function decryptBusPayload(b64Str) {
+        try {
+            if (!b64Str || typeof b64Str !== 'string') return null;
+            const key = await getBusCryptoKey();
+            const binStr = atob(b64Str);
+            const raw = new Uint8Array(binStr.length);
+            for (let i = 0; i < binStr.length; i++) {
+                raw[i] = binStr.charCodeAt(i);
+            }
+            if (raw.length <= 12) return null;
+            const iv = raw.slice(0, 12);
+            const data = raw.slice(12);
+            const decrypted = await window.crypto.subtle.decrypt({ name: 'AES-GCM', iv: iv }, key, data);
+            const text = new TextDecoder().decode(decrypted);
+            return JSON.parse(text);
+        } catch (e) {
+            return null;
+        }
+    }
+
     // Normalização universal de chaves (16 caracteres, com ou sem 'K', com ou sem hífens)
     function extractRawKey16(str) {
         if (!str || typeof str !== 'string') return '';
@@ -3673,9 +3731,8 @@
 
     // --- SINCRONIZAÇÃO EM NUVEM E MONITORAMENTO CONTÍNUO DE SEGURANÇA (CRM & LICENÇAS) ---
     const PROFIN_CLOUD_TOPICS = [
-        'https://ntfy.sh/profinance_v2_sync',
-        'https://ntfy.sh/profinance_mbtech_live_bus_2026',
-        'https://ntfy.sh/profinance_security_bus_mbtech_2026'
+        'https://ntfy.sh/profin_sec_bus_9f8a2e7c',
+        'https://ntfy.sh/profinance_v2_sync'
     ];
     const PROFIN_CLOUD_TOPIC = PROFIN_CLOUD_TOPICS[0];
     const profinDeviceId = 'dev_' + Math.random().toString(36).substring(2, 9);
@@ -3887,24 +3944,36 @@
                     timestamp: Date.now()
                 };
 
-                // 1. Salva no banco persistente do Netlify (se disponível)
+                // 1. Salva no banco persistente do Netlify (autenticado com token do Administrador)
                 try {
+                    const adminToken = localStorage.getItem('profinance_admin_pass') || DEFAULT_ADMIN_HASH;
                     await fetch('/.netlify/functions/crm', {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
+                        headers: { 
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${adminToken}`
+                        },
                         body: JSON.stringify(payload),
                         keepalive: true,
                         signal: controller.signal
                     });
                 } catch(e) {}
 
-                // 2. Envia para todos os barramentos em nuvem para compatibilidade universal entre aparelhos
+                // 2. Envia para todos os barramentos em nuvem de forma criptografada (AES-GCM 256-bit)
+                const encryptedData = await encryptBusPayload(payload);
+                const busPayload = encryptedData ? {
+                    action: 'CRM_SECURE_SYNC',
+                    sender: profinDeviceId,
+                    enc: encryptedData,
+                    timestamp: Date.now()
+                } : payload;
+
                 PROFIN_CLOUD_TOPICS.forEach(topicUrl => {
                     try {
                         fetch(topicUrl, {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify(payload),
+                            body: JSON.stringify(busPayload),
                             keepalive: true,
                             signal: controller.signal
                         }).catch(() => {});
@@ -3941,19 +4010,23 @@
                             if (text && text.trim()) {
                                 let latestSync = null;
                                 const lines = text.trim().split('\n');
-                                lines.forEach(line => {
+                                for (const line of lines) {
                                     try {
                                         const evt = JSON.parse(line);
                                         if (evt && evt.message) {
-                                            const data = typeof evt.message === 'string' ? JSON.parse(evt.message) : evt.message;
-                                            if (data && data.action === 'CRM_SYNC') {
+                                            let data = typeof evt.message === 'string' ? JSON.parse(evt.message) : evt.message;
+                                            if (data && data.enc) {
+                                                const dec = await decryptBusPayload(data.enc);
+                                                if (dec) data = dec;
+                                            }
+                                            if (data && (data.action === 'CRM_SYNC' || data.action === 'CRM_SECURE_SYNC')) {
                                                 if (!latestSync || (data.timestamp || 0) > (latestSync.timestamp || 0)) {
                                                     latestSync = data;
                                                 }
                                             }
                                         }
                                     } catch (e) {}
-                                });
+                                }
 
                                 if (latestSync) {
                                     foundCloud = true;
@@ -3996,17 +4069,28 @@
             }
             profinSSE = new EventSource(`${PROFIN_CLOUD_TOPIC}/sse`);
 
-            profinSSE.onmessage = function(event) {
+            profinSSE.onmessage = async function(event) {
                 try {
                     const evt = JSON.parse(event.data);
                     if (!evt || !evt.message) return;
-                    const data = typeof evt.message === 'string' ? JSON.parse(evt.message) : evt.message;
+                    let data = typeof evt.message === 'string' ? JSON.parse(evt.message) : evt.message;
                     if (!data) return;
 
                     // Ignora mensagens enviadas pelo próprio aparelho
                     if (data.sender && data.sender === profinDeviceId) return;
 
-                    if (data.action === 'CRM_SYNC') {
+                    if (data.enc) {
+                        const dec = await decryptBusPayload(data.enc);
+                        if (dec) data = dec;
+                    }
+
+                    if (data.action === 'CRM_SYNC' || data.action === 'CRM_SECURE_SYNC') {
+                        // Atualiza dados locais sem disparar push em resposta para evitar loops
+                        mergeLicensesData(data.licenses, data.revoked, data.deletedIds, data.pix);
+                        if (typeof verifyActiveSessionContinuously === 'function') {
+                            verifyActiveSessionContinuously();
+                        }
+                    } else if (data.action === 'REVOKE') {
                         // Atualiza dados locais sem disparar push em resposta para evitar loops
                         mergeLicensesData(data.licenses, data.revoked, data.deletedIds, data.pix);
                         if (typeof verifyActiveSessionContinuously === 'function') {
@@ -4252,6 +4336,20 @@
             const passInput = document.getElementById('admin-password-input');
             if (passInput) passInput.focus();
         }
+    };
+
+    window.openBuyAccessWhatsApp = function() {
+        let targetPhone = '';
+        profinLicenses = JSON.parse(localStorage.getItem('profinance_licenses')) || [];
+        const firstWithPhone = profinLicenses.find(l => l.phone && l.phone.trim());
+        if (firstWithPhone) {
+            targetPhone = formatCleanPhone(firstWithPhone.phone);
+        }
+        const text = encodeURIComponent('Olá! Gostaria de conhecer os planos e adquirir minha chave de acesso ao ProFinance.');
+        const url = targetPhone 
+            ? `https://api.whatsapp.com/send?phone=${targetPhone}&text=${text}`
+            : `https://api.whatsapp.com/send?text=${text}`;
+        window.open(url, '_blank');
     };
 
     window.handleActivateKey = async function(e) {

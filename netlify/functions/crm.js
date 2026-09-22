@@ -6,10 +6,12 @@ try {
 
 let memoryStore = null;
 
+const ADMIN_AUTH_HASH = "9937314286890361836671256cf88709c26bef673d201989e89f73611b55e77b";
+
 exports.handler = async function(event, context) {
   const headers = {
     "Access-Control-Allow-Origin": "*",
-    "Access-Control-Allow-Headers": "Content-Type",
+    "Access-Control-Allow-Headers": "Content-Type, Authorization",
     "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
     "Content-Type": "application/json"
   };
@@ -27,6 +29,17 @@ exports.handler = async function(event, context) {
     }
 
     if (event.httpMethod === "POST") {
+      const authHeader = event.headers["authorization"] || event.headers["Authorization"] || "";
+      const token = authHeader.replace(/^Bearer\s+/i, "").trim();
+
+      if (token !== ADMIN_AUTH_HASH) {
+        return {
+          statusCode: 401,
+          headers,
+          body: JSON.stringify({ error: "Unauthorized: Acesso restrito ao Administrador Master." })
+        };
+      }
+
       const payload = JSON.parse(event.body || "{}");
       if (store) {
         try {
