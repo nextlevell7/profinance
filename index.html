@@ -3018,7 +3018,7 @@
                     <span style="font-size: 0.75rem; color: var(--text-muted);">Esta chave sai pronta nas mensagens automáticas de cobrança do WhatsApp.</span>
                 </div>
                 <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
-                    <input type="text" id="admin-pix-key" placeholder="Insira seu Pix (E-mail, CPF, CNPJ, Celular ou Aleatória)..." style="flex: 1; min-width: 240px;">
+                    <input type="text" id="admin-pix-key" placeholder="03779104229 (CPF) ou outro Pix..." style="flex: 1; min-width: 240px;">
                     <button type="button" class="btn-toolbar" onclick="saveAdminPixKey()" style="background: #064E3B; border-color: #10B981; color: #A7F3D0; padding: 0.75rem 1.25rem; font-weight: 700;">
                         💾 Salvar Chave Pix
                     </button>
@@ -3931,7 +3931,7 @@
             let localDeletedIds = JSON.parse(localStorage.getItem('profinance_deleted_ids')) || [];
             profinLicenses = deduplicateLicenses(JSON.parse(localStorage.getItem('profinance_licenses')) || []).filter(l => !isLicenseDeleted(l, localDeletedIds));
             profinRevokedKeys = JSON.parse(localStorage.getItem('profinance_revoked_keys')) || [];
-            const pixKey = localStorage.getItem('profinance_admin_pix') || '';
+            const pixKey = localStorage.getItem('profinance_admin_pix') || '03779104229';
 
             if (mode === 'push') {
                 const payload = {
@@ -4629,7 +4629,7 @@
     window.loadAdminPixKey = function() {
         const input = document.getElementById('admin-pix-key');
         if (!input) return;
-        input.value = localStorage.getItem('profinance_admin_pix') || '';
+        input.value = localStorage.getItem('profinance_admin_pix') || '03779104229';
     };
 
     window.handleDurationChange = function(val) {
@@ -4872,7 +4872,7 @@
         }
 
         const cleanPhone = formatCleanPhone(phone);
-        const adminPix = localStorage.getItem('profinance_admin_pix') || 'Chave Pix a combinar';
+        const adminPix = localStorage.getItem('profinance_admin_pix') || '03779104229';
         const now = Date.now();
         const isRevoked = lic.status === 'revoked';
         const isExpired = lic.exp > 0 && now > lic.exp;
@@ -4907,7 +4907,7 @@ Para manter seu painel ativo sem nenhuma interrupção, garanta sua renovação:
 • *Anual (Recomendado):* R$ 247,00 *(Economize R$ 231 no ano!)*
 
 💳 *Pagamento via Pix:*
-Chave Pix: *${adminPix}*
+Chave Pix (CPF): *${adminPix}* (Matheus Brito)
 
 🌐 *Link de Acesso:* https://profinancemax.netlify.app/
 
@@ -4926,7 +4926,7 @@ Para reativar seu acesso instantaneamente e não perder o controle das suas fina
 • *Plano Anual:* R$ 247,00 *(Melhor Custo-Benefício)*
 
 💳 *Chave Pix para Pagamento:*
-*${adminPix}*
+Chave Pix (CPF): *${adminPix}* (Matheus Brito)
 
 🌐 *Link de Acesso:* https://profinancemax.netlify.app/
 
