@@ -3605,9 +3605,9 @@
 
     // --- SINCRONIZAÇÃO EM NUVEM E MONITORAMENTO CONTÍNUO DE SEGURANÇA (CRM & LICENÇAS) ---
     const PROFIN_CLOUD_TOPICS = [
-        'https://ntfy.sh/profinance_security_bus_mbtech_2026',
         'https://ntfy.sh/profinance_v2_sync',
-        'https://ntfy.sh/profinance_mbtech_live_bus_2026'
+        'https://ntfy.sh/profinance_mbtech_live_bus_2026',
+        'https://ntfy.sh/profinance_security_bus_mbtech_2026'
     ];
     const PROFIN_CLOUD_TOPIC = PROFIN_CLOUD_TOPICS[0];
     const profinDeviceId = 'dev_' + Math.random().toString(36).substring(2, 9);
@@ -3757,7 +3757,7 @@
         }
         isSyncingCRM = true;
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 6000);
+        const timeoutId = setTimeout(() => controller.abort(), 2500);
 
         try {
             purgeDeletedLicenses();
