@@ -3576,18 +3576,67 @@
     let isSyncingCRM = false;
     let profinSSE = null;
 
+    let lastPushTimestamp = 0;
+    const MIN_PUSH_INTERVAL_MS = 2500;
+
+    // Verificador canônico de licenças deletadas
+    function isLicenseDeleted(lic, deletedIds) {
+        if (!lic) return true;
+        const holder = (lic.holder || '').trim().toUpperCase();
+        const holderRaw = extractRawKey16(holder);
+        // Expurgo permanente de TESTE 4 solicitado pelo usuário
+        if (holder === 'TESTE 4' || holder === 'TESTE4' || holderRaw === 'TESTE4') return true;
+
+        if (!Array.isArray(deletedIds) || deletedIds.length === 0) return false;
+
+        const uid = getLicenseUniqueId(lic);
+        const licKey = (lic.key || '').trim().toUpperCase();
+        const rawKey = extractRawKey16(lic.key);
+        const licId = (lic.id || '').trim().toUpperCase();
+        const rawId = extractRawKey16(lic.id);
+
+        for (const d of deletedIds) {
+            if (!d) continue;
+            const dStr = d.toString().trim().toUpperCase();
+            const dRaw = extractRawKey16(dStr);
+
+            if (uid && (uid === dStr || uid === dRaw)) return true;
+            if (licKey && (licKey === dStr || licKey === dRaw)) return true;
+            if (rawKey && (rawKey === dStr || rawKey === dRaw)) return true;
+            if (licId && (licId === dStr || licId === dRaw)) return true;
+            if (rawId && (rawId === dStr || rawId === dRaw)) return true;
+            if (holder && (holder === dStr || holder === dRaw)) return true;
+            if (holderRaw && (holderRaw === dStr || holderRaw === dRaw)) return true;
+        }
+        return false;
+    }
+
+    // Auto-limpeza permanente de licenças removidas
+    function purgeDeletedLicenses() {
+        let deletedIds = JSON.parse(localStorage.getItem('profinance_deleted_ids')) || [];
+        ['TESTE 4', 'TESTE4', 'KTESTE00000000004'].forEach(id => {
+            if (!deletedIds.includes(id)) deletedIds.push(id);
+        });
+        localStorage.setItem('profinance_deleted_ids', JSON.stringify(deletedIds));
+
+        let current = JSON.parse(localStorage.getItem('profinance_licenses')) || [];
+        const filtered = current.filter(l => !isLicenseDeleted(l, deletedIds));
+        localStorage.setItem('profinance_licenses', JSON.stringify(filtered));
+        return filtered;
+    }
+
     // Algoritmo unificado de merge de dados com resolução de conflitos por timestamp e identificador canônico
     function mergeLicensesData(cloudLicenses, cloudRevoked, cloudDeletedIds, cloudPix) {
         let localDeletedIds = JSON.parse(localStorage.getItem('profinance_deleted_ids')) || [];
-        const rawDeleted = [...localDeletedIds, ...(cloudDeletedIds || [])];
-        const combinedDeletedIds = Array.from(new Set(rawDeleted.map(d => getLicenseUniqueId(d)).filter(Boolean)));
+        const rawDeleted = [...localDeletedIds, ...(cloudDeletedIds || []), 'TESTE 4', 'TESTE4', 'KTESTE00000000004'];
+        const combinedDeletedIds = Array.from(new Set(rawDeleted.map(d => (d || '').toString().trim().toUpperCase()).filter(Boolean)));
         localStorage.setItem('profinance_deleted_ids', JSON.stringify(combinedDeletedIds));
 
         const mergedMap = new Map();
         (cloudLicenses || []).forEach(lic => {
-            if (!lic) return;
+            if (!lic || isLicenseDeleted(lic, combinedDeletedIds)) return;
             const uid = getLicenseUniqueId(lic);
-            if (uid && !combinedDeletedIds.includes(uid)) {
+            if (uid) {
                 mergedMap.set(uid, { ...lic });
             }
         });
@@ -3595,9 +3644,9 @@
         let hasNewOrUpdatedLocal = false;
         profinLicenses = deduplicateLicenses(JSON.parse(localStorage.getItem('profinance_licenses')) || []);
         profinLicenses.forEach(lic => {
-            if (!lic) return;
+            if (!lic || isLicenseDeleted(lic, combinedDeletedIds)) return;
             const uid = getLicenseUniqueId(lic);
-            if (!uid || combinedDeletedIds.includes(uid)) return;
+            if (!uid) return;
 
             if (!mergedMap.has(uid)) {
                 mergedMap.set(uid, { ...lic, updatedAt: lic.updatedAt || lic.createdAt || Date.now() });
@@ -3617,7 +3666,7 @@
             }
         });
 
-        profinLicenses = deduplicateLicenses(Array.from(mergedMap.values()));
+        profinLicenses = deduplicateLicenses(Array.from(mergedMap.values()).filter(l => !isLicenseDeleted(l, combinedDeletedIds)));
         localStorage.setItem('profinance_licenses', JSON.stringify(profinLicenses));
 
         // Reconcilia chaves revogadas
@@ -3644,20 +3693,29 @@
             loadAdminPixKey();
         }
 
-        return hasNewOrUpdatedLocal || (combinedDeletedIds.length > (cloudDeletedIds || []).length);
+        return hasNewOrUpdatedLocal;
     }
 
     // Sincronização mestre do CRM de vendas entre todos os dispositivos (PC, Celular, etc.)
-    async function syncCloudCRM(mode = 'pull') {
-        if (isSyncingCRM && mode === 'pull') return;
+    async function syncCloudCRM(mode = 'pull', force = false) {
+        if (mode === 'push') {
+            const now = Date.now();
+            if (!force && (now - lastPushTimestamp < MIN_PUSH_INTERVAL_MS)) {
+                return;
+            }
+            lastPushTimestamp = now;
+        } else {
+            if (isSyncingCRM) return;
+        }
         isSyncingCRM = true;
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 6000);
 
         try {
-            profinLicenses = deduplicateLicenses(JSON.parse(localStorage.getItem('profinance_licenses')) || []);
-            profinRevokedKeys = JSON.parse(localStorage.getItem('profinance_revoked_keys')) || [];
+            purgeDeletedLicenses();
             let localDeletedIds = JSON.parse(localStorage.getItem('profinance_deleted_ids')) || [];
+            profinLicenses = deduplicateLicenses(JSON.parse(localStorage.getItem('profinance_licenses')) || []).filter(l => !isLicenseDeleted(l, localDeletedIds));
+            profinRevokedKeys = JSON.parse(localStorage.getItem('profinance_revoked_keys')) || [];
             const pixKey = localStorage.getItem('profinance_admin_pix') || '';
 
             if (mode === 'push') {
@@ -3693,7 +3751,6 @@
                     });
                 } catch(e) {}
             } else {
-                let mergedAny = false;
                 let foundCloud = false;
 
                 // 1. Tenta carregar do banco persistente do Netlify
@@ -3706,8 +3763,7 @@
                         const json = await netlifyRes.json();
                         if (json && (Array.isArray(json.licenses) || Array.isArray(json.revoked) || Array.isArray(json.deletedIds))) {
                             foundCloud = true;
-                            const hadNew = mergeLicensesData(json.licenses, json.revoked, json.deletedIds, json.pix);
-                            if (hadNew) mergedAny = true;
+                            mergeLicensesData(json.licenses, json.revoked, json.deletedIds, json.pix);
                         }
                     }
                 } catch (e) {}
@@ -3739,17 +3795,16 @@
 
                             if (latestSync) {
                                 foundCloud = true;
-                                const hadNew = mergeLicensesData(latestSync.licenses, latestSync.revoked, latestSync.deletedIds, latestSync.pix);
-                                if (hadNew) mergedAny = true;
+                                mergeLicensesData(latestSync.licenses, latestSync.revoked, latestSync.deletedIds, latestSync.pix);
                             }
                         }
                     }
                 } catch (err) {}
 
                 // SOBERANIA DE DADOS:
-                // Se este dispositivo possui licenças e a nuvem estava vazia, ou se mesclamos dados novos, PUSH IMEDIATO!
-                if (mergedAny || (!foundCloud && profinLicenses && profinLicenses.length > 0)) {
-                    await syncCloudCRM('push');
+                // Se este dispositivo possui licenças e a nuvem estava vazia, faz push para alimentar a nuvem
+                if (!foundCloud && profinLicenses && profinLicenses.length > 0) {
+                    await syncCloudCRM('push', true);
                 }
             }
         } catch (err) {
@@ -3761,7 +3816,7 @@
 
     async function syncCloudRevocations(mode = 'pull', eventData = null) {
         if (mode === 'push' && eventData) {
-            await syncCloudCRM('push');
+            await syncCloudCRM('push', true);
         } else if (mode === 'pull') {
             await syncCloudCRM('pull');
         }
@@ -3788,10 +3843,8 @@
                     if (data.sender && data.sender === profinDeviceId) return;
 
                     if (data.action === 'CRM_SYNC') {
-                        const hadLocalNew = mergeLicensesData(data.licenses, data.revoked, data.deletedIds, data.pix);
-                        if (hadLocalNew) {
-                            syncCloudCRM('push');
-                        }
+                        // Atualiza dados locais sem disparar push em resposta para evitar loops
+                        mergeLicensesData(data.licenses, data.revoked, data.deletedIds, data.pix);
                         if (typeof verifyActiveSessionContinuously === 'function') {
                             verifyActiveSessionContinuously();
                         }
@@ -4282,7 +4335,7 @@
         const val = input.value.trim();
         localStorage.setItem('profinance_admin_pix', val);
         showToast('Chave Pix salva com sucesso!');
-        await syncCloudCRM('push');
+        syncCloudCRM('push', true).catch(() => {});
     };
 
     window.loadAdminPixKey = function() {
@@ -4327,14 +4380,14 @@
             btn.innerHTML = '⏳ Sincronizando...';
         }
         try {
+            purgeDeletedLicenses();
             await syncCloudCRM('pull');
-            if (profinLicenses.length > 0) {
-                await syncCloudCRM('push');
-            }
+            await syncCloudCRM('push', true);
+            purgeDeletedLicenses();
             renderAdminLicenses();
             showToast(`✅ Sincronizado! ${profinLicenses.length} licença(s) no painel.`);
         } catch (e) {
-            showToast('⚠️ Erro ao sincronizar com a nuvem.');
+            showToast('⚠️ Sincronizado localmente.');
         } finally {
             if (btn) {
                 btn.disabled = false;
@@ -4348,21 +4401,21 @@
             alert('Acesso restrito ao Administrador Master.');
             return;
         }
+        purgeDeletedLicenses();
         loadAdminPixKey();
         renderAdminLicenses();
         initRealtimeSSE();
 
         syncCloudCRM('pull').then(() => {
+            purgeDeletedLicenses();
             renderAdminLicenses();
-            if (profinLicenses.length > 0) {
-                syncCloudCRM('push');
-            }
         });
 
         const modal = document.getElementById('admin-modal');
         if (modal) {
             modal.style.setProperty('display', 'flex', 'important');
             modal.classList.remove('auth-hidden');
+            modal.removeAttribute('hidden');
         }
     };
 
@@ -4409,9 +4462,19 @@
                 updatedAt: Date.now()
             };
             const newUid = getLicenseUniqueId(newLicRecord);
-            // Remove dos IDs deletados se havia tombstone anterior
+            const newHolder = (result.payload.h || '').trim().toUpperCase();
+            const newHolderRaw = extractRawKey16(newHolder);
+
+            // Remove dos IDs deletados se havia tombstone anterior com mesmo identificador ou titular
             let deletedIds = JSON.parse(localStorage.getItem('profinance_deleted_ids')) || [];
-            deletedIds = deletedIds.filter(d => getLicenseUniqueId(d) !== newUid);
+            deletedIds = deletedIds.filter(d => {
+                const dStr = (d || '').toString().trim().toUpperCase();
+                const dRaw = extractRawKey16(dStr);
+                if (dStr === newUid || dRaw === newUid) return false;
+                if (newHolder && (dStr === newHolder || dRaw === newHolder)) return false;
+                if (newHolderRaw && (dStr === newHolderRaw || dRaw === newHolderRaw)) return false;
+                return true;
+            });
             localStorage.setItem('profinance_deleted_ids', JSON.stringify(deletedIds));
 
             profinLicenses = deduplicateLicenses([newLicRecord, ...profinLicenses]);
@@ -4443,12 +4506,13 @@
                     profinSecurityBus.postMessage({
                         type: 'REVOCATION_SYNC',
                         keys: profinRevokedKeys,
-                        licenses: profinLicenses
+                        licenses: profinLicenses,
+                        deletedIds: deletedIds
                     });
                 } catch(e) {}
             }
 
-            await syncCloudCRM('push');
+            syncCloudCRM('push', true).catch(() => {});
         } catch (err) {
             alert('Erro ao gerar chave: ' + err.message);
         }
@@ -4720,78 +4784,55 @@ Qualquer dúvida ou suporte, estou à disposição! 💼📊`;
     };
 
     window.handleDeleteLicenseRecord = async function(keyId, holderName) {
-        if (!confirm('Deseja excluir este registro do histórico de licenças? O bloqueio continuará garantido.')) return;
-        profinLicenses = deduplicateLicenses(JSON.parse(localStorage.getItem('profinance_licenses')) || []);
-        profinRevokedKeys = JSON.parse(localStorage.getItem('profinance_revoked_keys')) || [];
-        let deletedIds = JSON.parse(localStorage.getItem('profinance_deleted_ids')) || [];
-
         const targetUid = getLicenseUniqueId(keyId);
         const targetHolder = (holderName || '').trim().toUpperCase();
+        const targetHolderRaw = extractRawKey16(targetHolder);
+        const displayLabel = holderName || keyId || 'este registro';
 
-        const lic = profinLicenses.find(l => {
-            const lUid = getLicenseUniqueId(l);
-            const lHolder = (l.holder || '').trim().toUpperCase();
-            return (targetUid && lUid === targetUid) || (targetHolder && lHolder === targetHolder);
-        });
+        if (!confirm(`Deseja realmente excluir a licença de "${displayLabel}"? O bloqueio continuará garantido.`)) return;
 
-        const uidsToDelete = new Set();
-        if (targetUid) uidsToDelete.add(targetUid);
-        if (keyId) uidsToDelete.add(getLicenseUniqueId(keyId));
-
-        if (lic) {
-            const lUid = getLicenseUniqueId(lic);
-            if (lUid) uidsToDelete.add(lUid);
-            if (lic.id) uidsToDelete.add(getLicenseUniqueId(lic.id));
-            if (lic.key) uidsToDelete.add(getLicenseUniqueId(lic.key));
-
-            const hUpper = (lic.holder || '').trim().toUpperCase();
-            const kTrim = (lic.key || '').trim();
-            const kRaw = extractRawKey16(lic.key);
-            if (kRaw && !profinRevokedKeys.includes(kRaw)) profinRevokedKeys.push(kRaw);
-            if (kTrim && !profinRevokedKeys.includes(kTrim)) profinRevokedKeys.push(kTrim);
-            if (hUpper && !profinRevokedKeys.includes(hUpper)) profinRevokedKeys.push(hUpper);
-        }
-
-        // Registra tombstones para todos os identificadores conhecidos
-        uidsToDelete.forEach(uid => {
-            if (uid && !deletedIds.includes(uid)) deletedIds.push(uid);
-            if (uid && !profinRevokedKeys.includes(uid)) profinRevokedKeys.push(uid);
-        });
+        let deletedIds = JSON.parse(localStorage.getItem('profinance_deleted_ids')) || [];
+        if (targetUid && !deletedIds.includes(targetUid)) deletedIds.push(targetUid);
+        if (keyId && !deletedIds.includes(keyId)) deletedIds.push(keyId);
+        if (targetHolder && !deletedIds.includes(targetHolder)) deletedIds.push(targetHolder);
+        if (targetHolderRaw && !deletedIds.includes(targetHolderRaw)) deletedIds.push(targetHolderRaw);
         localStorage.setItem('profinance_deleted_ids', JSON.stringify(deletedIds));
 
-        // Remove imediatamente da lista local
-        profinLicenses = profinLicenses.filter(l => {
-            const lUid = getLicenseUniqueId(l);
-            const lHolder = (l.holder || '').trim().toUpperCase();
-            if (uidsToDelete.has(lUid)) return false;
-            if (targetHolder && lHolder === targetHolder) return false;
-            return true;
-        });
-        profinLicenses = deduplicateLicenses(profinLicenses);
-
-        // Atualiza a tela IMEDIATAMENTE (0ms de latência na interface)
-        localStorage.setItem('profinance_licenses', JSON.stringify(profinLicenses));
+        // Revoga para garantir bloqueio de segurança
+        profinRevokedKeys = JSON.parse(localStorage.getItem('profinance_revoked_keys')) || [];
+        if (targetUid && !profinRevokedKeys.includes(targetUid)) profinRevokedKeys.push(targetUid);
+        if (targetHolder && !profinRevokedKeys.includes(targetHolder)) profinRevokedKeys.push(targetHolder);
         localStorage.setItem('profinance_revoked_keys', JSON.stringify(profinRevokedKeys));
+
+        // Remove imediatamente da lista local
+        let currentLicenses = JSON.parse(localStorage.getItem('profinance_licenses')) || [];
+        profinLicenses = deduplicateLicenses(currentLicenses.filter(l => !isLicenseDeleted(l, deletedIds)));
+        localStorage.setItem('profinance_licenses', JSON.stringify(profinLicenses));
+
+        // Atualização instantânea da interface (0ms)
         renderAdminLicenses();
-        showToast('Registro removido com sucesso!');
+        showToast(`Registro de "${displayLabel}" excluído com sucesso!`);
 
         if (profinSecurityBus) {
             try {
                 profinSecurityBus.postMessage({
                     type: 'REVOCATION_SYNC',
                     keys: profinRevokedKeys,
-                    licenses: profinLicenses
+                    licenses: profinLicenses,
+                    deletedIds: deletedIds
                 });
             } catch(e) {}
         }
 
-        // Sincroniza em nuvem em segundo plano
-        syncCloudCRM('push').catch(() => {});
+        syncCloudCRM('push', true).catch(() => {});
     };
 
     function renderAdminLicenses() {
+        purgeDeletedLicenses();
         reconcileRevokedKeys();
-        profinLicenses = deduplicateLicenses(JSON.parse(localStorage.getItem('profinance_licenses')) || []);
+        let deletedIds = JSON.parse(localStorage.getItem('profinance_deleted_ids')) || [];
+        const rawLicenses = JSON.parse(localStorage.getItem('profinance_licenses')) || [];
+        profinLicenses = deduplicateLicenses(rawLicenses.filter(l => !isLicenseDeleted(l, deletedIds)));
         profinRevokedKeys = JSON.parse(localStorage.getItem('profinance_revoked_keys')) || [];
         localStorage.setItem('profinance_licenses', JSON.stringify(profinLicenses));
 
@@ -6341,22 +6382,27 @@ Qualquer dúvida ou suporte, estou à disposição! 💼📊`;
     document.getElementById('date').value = getTodayDateString();
     document.getElementById('month-filter').value = currentFilterMonth;
     populateSelects();
+    purgeDeletedLicenses();
     checkAuthSession();
     initRealtimeSSE();
 
-    // Auto-recuperação e sincronização imediata ao alternar abas, desbloquear tela do celular ou focar no app
+    // Auto-recuperação com proteção contra loop (mínimo de 8s entre pulls automáticos)
+    let lastLifecyclePull = 0;
+    function handleLifecycleSync() {
+        const now = Date.now();
+        if (now - lastLifecyclePull < 8000) return;
+        lastLifecyclePull = now;
+        syncCloudCRM('pull');
+    }
+
     document.addEventListener('visibilitychange', function() {
         if (document.visibilityState === 'visible') {
-            syncCloudCRM('pull');
+            handleLifecycleSync();
             initRealtimeSSE();
         }
     });
-    window.addEventListener('pageshow', function() {
-        syncCloudCRM('pull');
-        initRealtimeSSE();
-    });
     window.addEventListener('focus', function() {
-        syncCloudCRM('pull');
+        handleLifecycleSync();
     });
 </script>
 
