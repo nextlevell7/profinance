@@ -3309,30 +3309,34 @@
         return (lic.id || lic.key || '').toString().trim().toUpperCase();
     }
 
-    // Deduplicação ativa de listas de licenças com resolução de conflitos
+    // Deduplicação ativa de listas de licenças com resolução por titular mais recente
     function deduplicateLicenses(list) {
         if (!Array.isArray(list)) return [];
-        const map = new Map();
+        const holderMap = new Map();
+
         list.forEach(lic => {
             if (!lic) return;
             const uid = getLicenseUniqueId(lic);
-            if (!uid) return;
-            if (!map.has(uid)) {
-                map.set(uid, { ...lic });
+            const holder = (lic.holder || '').trim().toUpperCase();
+            const keyIdent = holder || uid;
+            if (!keyIdent) return;
+
+            if (!holderMap.has(keyIdent)) {
+                holderMap.set(keyIdent, { ...lic });
             } else {
-                const existing = map.get(uid);
+                const existing = holderMap.get(keyIdent);
                 const licUpdated = lic.updatedAt || lic.createdAt || 0;
                 const existingUpdated = existing.updatedAt || existing.createdAt || 0;
+
                 if (licUpdated >= existingUpdated) {
-                    map.set(uid, { ...existing, ...lic });
+                    holderMap.set(keyIdent, { ...existing, ...lic });
                 } else {
                     if (!existing.phone && lic.phone) existing.phone = lic.phone;
                     if (!existing.price && lic.price) existing.price = lic.price;
-                    if (lic.status === 'revoked') existing.status = 'revoked';
                 }
             }
         });
-        return Array.from(map.values()).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+        return Array.from(holderMap.values()).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
     }
 
     function isKeyRevokedInList(targetKey, holderName, revokedList) {
@@ -3365,30 +3369,52 @@
         });
     }
 
-    // Auto-recuperação e conciliação de chaves revogadas vs ativas
+    // Auto-recuperação e conciliação determinística de chaves revogadas vs ativas
     function reconcileRevokedKeys() {
-        profinLicenses = JSON.parse(localStorage.getItem('profinance_licenses')) || [];
-        profinRevokedKeys = JSON.parse(localStorage.getItem('profinance_revoked_keys')) || [];
+        if (!Array.isArray(profinLicenses) || profinLicenses.length === 0) {
+            profinLicenses = JSON.parse(localStorage.getItem('profinance_licenses')) || [];
+        }
+        const revokedSet = new Set();
 
+        // 0. Preserva bloqueio de registros deletados
+        const deletedIds = JSON.parse(localStorage.getItem('profinance_deleted_ids')) || [];
+        deletedIds.forEach(d => {
+            if (d) revokedSet.add(d.toString().trim().toUpperCase());
+        });
+
+        // 1. Coleta todas as chaves marcadas como revogadas
         profinLicenses.forEach(lic => {
+            if (!lic || lic.status !== 'revoked') return;
             const hUpper = (lic.holder || '').trim().toUpperCase();
             const kTrim = (lic.key || '').trim();
             const kRaw = extractRawKey16(lic.key);
-            const kId = (lic.id || '').trim();
+            const kId = (lic.id || '').trim().toUpperCase();
+            const uid = getLicenseUniqueId(lic);
 
-            if (lic.status === 'active') {
-                // Remove qualquer entrada desta licença da lista de revogados
-                profinRevokedKeys = removeKeyFromRevokedList(lic.key, lic.holder, profinRevokedKeys);
-                profinRevokedKeys = removeKeyFromRevokedList(lic.id, lic.holder, profinRevokedKeys);
-            } else if (lic.status === 'revoked') {
-                // Assegura que licenças revogadas estejam registradas
-                if (kId && !profinRevokedKeys.includes(kId)) profinRevokedKeys.push(kId);
-                if (kTrim && !profinRevokedKeys.includes(kTrim)) profinRevokedKeys.push(kTrim);
-                if (kRaw && !profinRevokedKeys.includes(kRaw)) profinRevokedKeys.push(kRaw);
-                if (hUpper && !profinRevokedKeys.includes(hUpper)) profinRevokedKeys.push(hUpper);
-            }
+            if (kId) revokedSet.add(kId);
+            if (kTrim) revokedSet.add(kTrim);
+            if (kRaw) revokedSet.add(kRaw);
+            if (uid) revokedSet.add(uid);
+            if (hUpper) revokedSet.add(hUpper);
         });
 
+        // 2. Garante que qualquer chave de licença ativa seja expurgada da lista de revogados
+        profinLicenses.forEach(lic => {
+            if (!lic || lic.status !== 'active') return;
+            const hUpper = (lic.holder || '').trim().toUpperCase();
+            const kTrim = (lic.key || '').trim();
+            const kRaw = extractRawKey16(lic.key);
+            const kId = (lic.id || '').trim().toUpperCase();
+            const uid = getLicenseUniqueId(lic);
+
+            if (kId) revokedSet.delete(kId);
+            if (kTrim) revokedSet.delete(kTrim);
+            if (kRaw) revokedSet.delete(kRaw);
+            if (uid) revokedSet.delete(uid);
+            if (hUpper) revokedSet.delete(hUpper);
+        });
+
+        profinRevokedKeys = Array.from(revokedSet);
         localStorage.setItem('profinance_revoked_keys', JSON.stringify(profinRevokedKeys));
         return profinRevokedKeys;
     }
@@ -3542,6 +3568,13 @@
             payload.h = matchingLic.holder; // Atualiza o nome do titular
             payload.id = matchingLic.id;
 
+            // Se a licença foi renovada no CRM, herda a validade renovada
+            if (typeof matchingLic.exp !== 'undefined') {
+                if (matchingLic.exp === 0 || matchingLic.exp > payload.e) {
+                    payload.e = matchingLic.exp;
+                }
+            }
+
             // Se o Administrador definiu explicitamente como REVOGADA
             if (matchingLic.status === 'revoked') {
                 return { valid: false, reason: 'Esta licença foi revogada pelo Administrador.' };
@@ -3633,52 +3666,62 @@
         localStorage.setItem('profinance_deleted_ids', JSON.stringify(combinedDeletedIds));
 
         const mergedMap = new Map();
-        (cloudLicenses || []).forEach(lic => {
-            if (!lic || isLicenseDeleted(lic, combinedDeletedIds)) return;
-            const uid = getLicenseUniqueId(lic);
-            if (uid) {
-                mergedMap.set(uid, { ...lic });
-            }
-        });
+        const holderToUidMap = new Map();
 
-        let hasNewOrUpdatedLocal = false;
-        profinLicenses = deduplicateLicenses(JSON.parse(localStorage.getItem('profinance_licenses')) || []);
-        profinLicenses.forEach(lic => {
+        const processLicense = (lic) => {
             if (!lic || isLicenseDeleted(lic, combinedDeletedIds)) return;
             const uid = getLicenseUniqueId(lic);
             if (!uid) return;
+            const holderKey = (lic.holder || '').trim().toUpperCase();
 
-            if (!mergedMap.has(uid)) {
+            let existing = mergedMap.get(uid);
+
+            // Se não encontrou pelo UID, checa se há registro pelo mesmo titular (ex: renovação que gerou nova chave)
+            if (!existing && holderKey && holderToUidMap.has(holderKey)) {
+                const prevUid = holderToUidMap.get(holderKey);
+                existing = mergedMap.get(prevUid);
+                if (existing) {
+                    const existingUpdated = existing.updatedAt || existing.createdAt || 0;
+                    const licUpdated = lic.updatedAt || lic.createdAt || 0;
+                    if (licUpdated >= existingUpdated) {
+                        mergedMap.delete(prevUid);
+                        mergedMap.set(uid, { ...existing, ...lic });
+                        holderToUidMap.set(holderKey, uid);
+                        return;
+                    } else {
+                        return; // O existente já é mais recente
+                    }
+                }
+            }
+
+            if (!existing) {
                 mergedMap.set(uid, { ...lic, updatedAt: lic.updatedAt || lic.createdAt || Date.now() });
-                hasNewOrUpdatedLocal = true;
+                if (holderKey) holderToUidMap.set(holderKey, uid);
             } else {
-                const existing = mergedMap.get(uid);
-                const localUpdated = lic.updatedAt || lic.createdAt || 0;
-                const cloudUpdated = existing.updatedAt || existing.createdAt || 0;
+                const existingUpdated = existing.updatedAt || existing.createdAt || 0;
+                const licUpdated = lic.updatedAt || lic.createdAt || 0;
 
-                if (localUpdated > cloudUpdated) {
+                if (licUpdated >= existingUpdated) {
                     mergedMap.set(uid, { ...existing, ...lic });
-                    hasNewOrUpdatedLocal = true;
                 } else {
                     if (!existing.phone && lic.phone) existing.phone = lic.phone;
                     if (!existing.price && lic.price) existing.price = lic.price;
                 }
+                if (holderKey) holderToUidMap.set(holderKey, uid);
             }
-        });
+        };
+
+        // 1. Processa licenças da nuvem
+        (cloudLicenses || []).forEach(lic => processLicense(lic));
+
+        // 2. Processa licenças locais
+        profinLicenses = deduplicateLicenses(JSON.parse(localStorage.getItem('profinance_licenses')) || []);
+        profinLicenses.forEach(lic => processLicense(lic));
 
         profinLicenses = deduplicateLicenses(Array.from(mergedMap.values()).filter(l => !isLicenseDeleted(l, combinedDeletedIds)));
         localStorage.setItem('profinance_licenses', JSON.stringify(profinLicenses));
 
-        // Reconcilia chaves revogadas
-        if (Array.isArray(cloudRevoked) && cloudRevoked.length > 0) {
-            profinRevokedKeys = JSON.parse(localStorage.getItem('profinance_revoked_keys')) || [];
-            cloudRevoked.forEach(k => {
-                const kUid = getLicenseUniqueId(k);
-                if (kUid && !profinRevokedKeys.includes(kUid)) profinRevokedKeys.push(kUid);
-                if (k && !profinRevokedKeys.includes(k)) profinRevokedKeys.push(k);
-            });
-            localStorage.setItem('profinance_revoked_keys', JSON.stringify(profinRevokedKeys));
-        }
+        // Reconcilia chaves revogadas estritamente a partir do estado consolidado
         reconcileRevokedKeys();
 
         // Chave Pix do administrador
@@ -3693,7 +3736,7 @@
             loadAdminPixKey();
         }
 
-        return hasNewOrUpdatedLocal;
+        return false;
     }
 
     // Sincronização mestre do CRM de vendas entre todos os dispositivos (PC, Celular, etc.)
@@ -4396,6 +4439,8 @@
         }
     };
 
+    let adminAutoSyncTimer = null;
+
     window.openAdminModal = function() {
         if (!currentAuthSession || currentAuthSession.role !== 'admin') {
             alert('Acesso restrito ao Administrador Master.');
@@ -4411,6 +4456,14 @@
             renderAdminLicenses();
         });
 
+        if (adminAutoSyncTimer) clearInterval(adminAutoSyncTimer);
+        adminAutoSyncTimer = setInterval(() => {
+            const modal = document.getElementById('admin-modal');
+            if (modal && modal.style.display !== 'none' && !modal.classList.contains('auth-hidden')) {
+                syncCloudCRM('pull');
+            }
+        }, 5000);
+
         const modal = document.getElementById('admin-modal');
         if (modal) {
             modal.style.setProperty('display', 'flex', 'important');
@@ -4420,6 +4473,10 @@
     };
 
     window.closeAdminModal = function() {
+        if (adminAutoSyncTimer) {
+            clearInterval(adminAutoSyncTimer);
+            adminAutoSyncTimer = null;
+        }
         const modal = document.getElementById('admin-modal');
         if (modal) {
             modal.style.setProperty('display', 'none', 'important');
@@ -4646,10 +4703,21 @@ Qualquer dúvida ou suporte, estou à disposição! 💼📊`;
         window.open(url, '_blank');
     };
 
-    window.handleRenewLicensePrompt = async function(licenseId) {
-        profinLicenses = JSON.parse(localStorage.getItem('profinance_licenses')) || [];
-        const lic = profinLicenses.find(l => l.id === licenseId);
-        if (!lic) return;
+    window.handleRenewLicensePrompt = async function(licenseId, holderName) {
+        profinLicenses = deduplicateLicenses(JSON.parse(localStorage.getItem('profinance_licenses')) || []);
+        const targetUid = getLicenseUniqueId(licenseId);
+        const targetHolder = (holderName || '').trim().toUpperCase();
+
+        const lic = profinLicenses.find(l => {
+            const lUid = getLicenseUniqueId(l);
+            const lHolder = (l.holder || '').trim().toUpperCase();
+            return (targetUid && (lUid === targetUid || l.id === licenseId || l.key === licenseId)) ||
+                   (targetHolder && lHolder === targetHolder);
+        });
+        if (!lic) {
+            alert('Licença não localizada para renovação.');
+            return;
+        }
 
         const choice = prompt(
             `🔄 RENOVAÇÃO DE ASSINATURA - ${lic.holder}\n\n` +
@@ -4663,21 +4731,22 @@ Qualquer dúvida ou suporte, estou à disposição! 💼📊`;
         );
 
         if (!choice) return;
+        const cleanChoice = choice.toString().trim().toLowerCase();
 
         let addDays = 30;
         let price = 39.90;
         let isLifetime = false;
 
-        if (choice === '1') {
+        if (cleanChoice === '1' || cleanChoice === '30' || cleanChoice.includes('mensal')) {
             addDays = 30;
             price = 39.90;
-        } else if (choice === '2') {
+        } else if (cleanChoice === '2' || cleanChoice === '90' || cleanChoice.includes('trimestral')) {
             addDays = 90;
             price = 97.00;
-        } else if (choice === '3') {
+        } else if (cleanChoice === '3' || cleanChoice === '365' || cleanChoice.includes('anual')) {
             addDays = 365;
             price = 247.00;
-        } else if (choice === '4') {
+        } else if (cleanChoice === '4' || cleanChoice === '0' || cleanChoice.includes('vitalicio') || cleanChoice.includes('vitalício')) {
             isLifetime = true;
             price = 497.00;
         } else {
@@ -4697,11 +4766,24 @@ Qualquer dúvida ou suporte, estou à disposição! 💼📊`;
             lic.price = (parseFloat(lic.price) || 0) + price;
             lic.updatedAt = Date.now();
 
+            profinLicenses = deduplicateLicenses(profinLicenses);
             localStorage.setItem('profinance_licenses', JSON.stringify(profinLicenses));
+            reconcileRevokedKeys();
             renderAdminLicenses();
 
             showToast(`Assinatura de "${lic.holder}" renovada com sucesso!`);
-            await syncCloudCRM('push');
+
+            if (profinSecurityBus) {
+                try {
+                    profinSecurityBus.postMessage({
+                        type: 'REVOCATION_SYNC',
+                        keys: profinRevokedKeys,
+                        licenses: profinLicenses
+                    });
+                } catch(e) {}
+            }
+
+            syncCloudCRM('push', true).catch(() => {});
 
             if (confirm(`Deseja abrir o WhatsApp para enviar a nova chave de acesso para ${lic.holder}?`)) {
                 sendWhatsAppBilling(lic.id, 'welcome');
@@ -4720,7 +4802,6 @@ Qualquer dúvida ou suporte, estou à disposição! 💼📊`;
     };
 
     window.toggleRevokeLicense = async function(keyId, holderName) {
-        reconcileRevokedKeys();
         profinLicenses = deduplicateLicenses(JSON.parse(localStorage.getItem('profinance_licenses')) || []);
         profinRevokedKeys = JSON.parse(localStorage.getItem('profinance_revoked_keys')) || [];
 
@@ -4730,43 +4811,27 @@ Qualquer dúvida ou suporte, estou à disposição! 💼📊`;
         const lic = profinLicenses.find(l => {
             const lUid = getLicenseUniqueId(l);
             const lHolder = (l.holder || '').trim().toUpperCase();
-            return (targetUid && lUid === targetUid) || (targetHolder && lHolder === targetHolder);
+            return (targetUid && (lUid === targetUid || l.id === keyId || l.key === keyId)) ||
+                   (targetHolder && lHolder === targetHolder);
         });
         if (!lic) return;
 
-        const hUpper = (lic.holder || '').trim().toUpperCase();
-        const kTrim = (lic.key || '').trim();
-        const kRaw = extractRawKey16(lic.key);
-
-        const isCurrentlyRevoked = lic.status === 'revoked' ||
-                                   isKeyRevokedInList(lic.key, lic.holder, profinRevokedKeys) ||
-                                   isKeyRevokedInList(lic.id, lic.holder, profinRevokedKeys) ||
-                                   (targetUid && profinRevokedKeys.includes(targetUid));
-
-        lic.updatedAt = Date.now();
+        const isCurrentlyRevoked = lic.status === 'revoked';
 
         if (!isCurrentlyRevoked) {
             if (!confirm(`Deseja realmente REVOGAR o acesso de "${lic.holder}"? O usuário será bloqueado imediatamente.`)) return;
             lic.status = 'revoked';
-            if (targetUid && !profinRevokedKeys.includes(targetUid)) profinRevokedKeys.push(targetUid);
-            if (lic.id && !profinRevokedKeys.includes(lic.id)) profinRevokedKeys.push(lic.id);
-            if (kTrim && !profinRevokedKeys.includes(kTrim)) profinRevokedKeys.push(kTrim);
-            if (kRaw && !profinRevokedKeys.includes(kRaw)) profinRevokedKeys.push(kRaw);
-            if (hUpper && !profinRevokedKeys.includes(hUpper)) profinRevokedKeys.push(hUpper);
             showToast(`Licença de "${lic.holder}" revogada!`);
         } else {
             if (!confirm(`Deseja REATIVAR o acesso de "${lic.holder}"? A chave voltará a funcionar normalmente.`)) return;
             lic.status = 'active';
-            profinRevokedKeys = removeKeyFromRevokedList(lic.key, lic.holder, profinRevokedKeys);
-            profinRevokedKeys = removeKeyFromRevokedList(lic.id, lic.holder, profinRevokedKeys);
-            if (targetUid) profinRevokedKeys = removeKeyFromRevokedList(targetUid, lic.holder, profinRevokedKeys);
             showToast(`Licença de "${lic.holder}" reativada com sucesso!`);
         }
 
-        // Salva e renderiza IMEDIATAMENTE (0ms de latência na interface)
+        lic.updatedAt = Date.now();
         profinLicenses = deduplicateLicenses(profinLicenses);
         localStorage.setItem('profinance_licenses', JSON.stringify(profinLicenses));
-        localStorage.setItem('profinance_revoked_keys', JSON.stringify(profinRevokedKeys));
+        reconcileRevokedKeys();
         renderAdminLicenses();
 
         if (profinSecurityBus) {
@@ -4779,8 +4844,7 @@ Qualquer dúvida ou suporte, estou à disposição! 💼📊`;
             } catch(e) {}
         }
 
-        // Sincroniza em nuvem em segundo plano
-        syncCloudCRM('push').catch(() => {});
+        syncCloudCRM('push', true).catch(() => {});
     };
 
     window.handleDeleteLicenseRecord = async function(keyId, holderName) {
@@ -4846,9 +4910,7 @@ Qualquer dúvida ou suporte, estou à disposição! 💼📊`;
 
         profinLicenses.forEach(lic => {
             totalRevenue += parseFloat(lic.price) || 0;
-            const isRevoked = lic.status === 'revoked' ||
-                              isKeyRevokedInList(lic.key, lic.holder, profinRevokedKeys) ||
-                              isKeyRevokedInList(lic.id, lic.holder, profinRevokedKeys);
+            const isRevoked = lic.status === 'revoked';
             const isExpired = lic.exp > 0 && now > lic.exp;
             const isExpiring = !isRevoked && !isExpired && lic.exp > 0 && (lic.exp - now <= 5 * 24 * 60 * 60 * 1000);
 
@@ -4903,9 +4965,7 @@ Qualquer dúvida ou suporte, estou à disposição! 💼📊`;
 
         // Aplicação do filtro selecionado
         const filteredLicenses = profinLicenses.filter(lic => {
-            const isRevoked = lic.status === 'revoked' ||
-                              isKeyRevokedInList(lic.key, lic.holder, profinRevokedKeys) ||
-                              isKeyRevokedInList(lic.id, lic.holder, profinRevokedKeys);
+            const isRevoked = lic.status === 'revoked';
             const isExpired = lic.exp > 0 && now > lic.exp;
             const isExpiring = !isRevoked && !isExpired && lic.exp > 0 && (lic.exp - now <= 5 * 24 * 60 * 60 * 1000);
 
@@ -4927,9 +4987,7 @@ Qualquer dúvida ou suporte, estou à disposição! 💼📊`;
         }
 
         tbody.innerHTML = filteredLicenses.map(lic => {
-            const isRevoked = lic.status === 'revoked' ||
-                              isKeyRevokedInList(lic.key, lic.holder, profinRevokedKeys) ||
-                              isKeyRevokedInList(lic.id, lic.holder, profinRevokedKeys);
+            const isRevoked = lic.status === 'revoked';
             const isExpired = lic.exp > 0 && now > lic.exp;
             const isExpiring = !isRevoked && !isExpired && lic.exp > 0 && (lic.exp - now <= 5 * 24 * 60 * 60 * 1000);
 
@@ -5003,7 +5061,7 @@ Qualquer dúvida ou suporte, estou à disposição! 💼📊`;
                             <button type="button" class="btn-whatsapp-action" onclick="sendWhatsAppBilling('${safeId}')" title="Enviar mensagem de cobrança ou renovação no WhatsApp">
                                 💬 WhatsApp
                             </button>
-                            <button type="button" class="btn-renew-action" onclick="handleRenewLicensePrompt('${safeId}')" title="Renovar assinatura (+30 ou +365 dias)">
+                            <button type="button" class="btn-renew-action" onclick="handleRenewLicensePrompt('${safeId}', '${safeHolder}')" title="Renovar assinatura (+30 ou +365 dias)">
                                 🔄 Renovar
                             </button>
                             <button type="button" class="btn-action-sm" onclick="copyKeyFromTable('${lic.key}')" title="Copiar Chave de Acesso">
