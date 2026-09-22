@@ -23,20 +23,148 @@
         body {
             background-color: #070B12;
             color: #F1F5F9;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 24px 16px 60px 16px;
+        }
+
+        /* Topo Comercial Flutuante / Header de Ações Rápidas */
+        .presentation-topbar {
+            width: 100%;
+            max-width: 960px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(15, 23, 42, 0.9);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+            padding: 12px 20px;
+            margin-bottom: 24px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .topbar-brand {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-weight: 800;
+            font-size: 1.1rem;
+            color: #FFFFFF;
+        }
+
+        .topbar-actions {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .btn-topbar-wa {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: linear-gradient(135deg, #10B981 0%, #059669 100%);
+            color: #FFFFFF;
+            text-decoration: none;
+            padding: 8px 18px;
+            border-radius: 999px;
+            font-weight: 700;
+            font-size: 0.85rem;
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+            transition: transform 0.15s ease;
+        }
+        .btn-topbar-wa:hover {
+            transform: translateY(-1px);
+        }
+
+        .btn-topbar-app {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: #1E293B;
+            border: 1px solid #334155;
+            color: #93C5FD;
+            text-decoration: none;
+            padding: 8px 18px;
+            border-radius: 999px;
+            font-weight: 600;
+            font-size: 0.85rem;
         }
 
         .page {
-            width: 210mm;
-            min-height: 297mm;
-            height: 297mm;
-            padding: 18mm 18mm;
-            page-break-after: always;
-            position: relative;
-            background: radial-gradient(circle at 80% 15%, rgba(56, 189, 248, 0.1) 0%, #070B12 65%);
+            width: 100%;
+            max-width: 960px;
+            min-height: auto;
+            margin: 0 auto 36px auto;
+            padding: 36px 42px;
+            background: radial-gradient(circle at 80% 15%, rgba(56, 189, 248, 0.12) 0%, #0B111E 65%);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 24px;
+            box-shadow: 0 25px 60px rgba(0, 0, 0, 0.8), 0 0 40px rgba(56, 189, 248, 0.08);
             display: flex;
             flex-direction: column;
             justify-content: space-between;
-            overflow: hidden;
+            position: relative;
+        }
+
+        @media (max-width: 768px) {
+            body {
+                padding: 12px 8px;
+            }
+            .presentation-topbar {
+                flex-direction: column;
+                align-items: stretch;
+                text-align: center;
+            }
+            .topbar-actions {
+                justify-content: center;
+            }
+            .page {
+                padding: 24px 18px;
+                border-radius: 16px;
+                margin-bottom: 20px;
+            }
+            .grid-2, .features-grid, .pricing-grid {
+                grid-template-columns: 1fr !important;
+            }
+            .highlight-banner {
+                flex-direction: column;
+                text-align: center;
+            }
+            .system-main-name {
+                font-size: 34pt;
+            }
+            .cover-title {
+                font-size: 20pt;
+            }
+        }
+
+        @media print {
+            body {
+                padding: 0;
+                background: #070B12;
+                display: block;
+            }
+            .no-print {
+                display: none !important;
+            }
+            .page {
+                width: 210mm;
+                min-height: 297mm;
+                height: 297mm;
+                margin: 0;
+                padding: 18mm 18mm;
+                border: none;
+                border-radius: 0;
+                box-shadow: none;
+                page-break-after: always;
+                overflow: hidden;
+            }
         }
 
         /* --- PÁGINA 1: CAPA --- */
@@ -396,6 +524,22 @@
 </head>
 <body>
 
+    <!-- BARRA SUPERIOR DE AÇÕES RÁPIDAS (DESKTOP / MOBILE) -->
+    <header class="presentation-topbar no-print">
+        <div class="topbar-brand">
+            <span style="color: #FFFFFF; font-weight: 900;">Pro</span><span style="color: #38BDF8; font-weight: 800;">Finance</span>
+            <span style="font-size: 0.72rem; background: rgba(56, 189, 248, 0.15); color: #38BDF8; padding: 2px 8px; border-radius: 999px; font-weight: 700;">MB TECH</span>
+        </div>
+        <div class="topbar-actions">
+            <a href="https://api.whatsapp.com/send?phone=5569992816598&text=Ol%C3%A1%21%20Gostaria%20de%20adquirir%20minha%20chave%20de%20acesso%20ao%20ProFinance." target="_blank" class="btn-topbar-wa">
+                💬 Comprar no WhatsApp (69 99281-6598)
+            </a>
+            <a href="https://profinancemax.netlify.app" target="_blank" class="btn-topbar-app">
+                🌐 Entrar no Sistema
+            </a>
+        </div>
+    </header>
+
     <!-- PÁGINA 1: CAPA -->
     <div class="page">
         <div style="display: flex; justify-content: space-between; align-items: center;">
@@ -430,11 +574,11 @@
 
             <h1 class="cover-title">
                 Domine o seu Dinheiro.<br>
-                <span>Multiplique seu Lucro.</span>
+                <span>Controle de Gastos e Inteligência Financeira.</span>
             </h1>
 
             <p class="cover-subtitle">
-                O ProFinance é a plataforma definitiva desenvolvida pela MB Tech para autônomos, MEIs e pessoas que querem ter controle absoluto das suas finanças direto no celular e computador.
+                O ProFinance é a plataforma definitiva desenvolvida pela MB Tech para autônomos, MEIs e pessoas que querem ter controle absoluto dos seus gastos e finanças direto no celular e computador.
             </p>
 
             <div class="cover-cards-preview">
@@ -620,7 +764,7 @@
             <!-- Box de Ação Direta -->
             <div class="cta-box">
                 <h3 class="cta-title">🚀 Como Ativar seu Acesso Imediatamente:</h3>
-                <p style="font-size: 8.5pt; color: #CBD5E1; max-width: 140mm;">
+                <p style="font-size: 8.5pt; color: #CBD5E1; max-width: 140mm; line-height: 1.5;">
                     1. Efetue o pagamento do plano escolhido via Pix oficial da <strong>MB Tech</strong>.<br>
                     2. Envie o comprovante no WhatsApp.<br>
                     3. Você recebe sua <strong>Chave Exclusiva de 16 Dígitos</strong> e começa a usar na hora!
@@ -628,7 +772,12 @@
                 <div class="cta-pix">
                     💳 Chave Pix CNPJ: <strong>69.234.012/0001-87</strong> (MB Tech)
                 </div>
-                <div style="margin-top: 1mm;">
+                <div style="margin: 3mm 0;">
+                    <a href="https://api.whatsapp.com/send?phone=5569992816598&text=Ol%C3%A1%21%20Gostaria%20de%20adquirir%20minha%20chave%20de%20acesso%20ao%20ProFinance." target="_blank" style="display: inline-flex; align-items: center; justify-content: center; gap: 8px; background: linear-gradient(135deg, #10B981 0%, #059669 100%); color: #FFFFFF; text-decoration: none; padding: 10px 22px; border-radius: 999px; font-weight: 800; font-size: 10pt; box-shadow: 0 4px 18px rgba(16, 185, 129, 0.45);">
+                        <span>💬 Enviar Comprovante / Adquirir: (69) 99281-6598</span>
+                    </a>
+                </div>
+                <div>
                     <a href="https://profinancemax.netlify.app" class="cta-link">🌐 Acesse a plataforma: <strong>profinancemax.netlify.app</strong></a>
                 </div>
             </div>

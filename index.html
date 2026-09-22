@@ -4339,16 +4339,9 @@
     };
 
     window.openBuyAccessWhatsApp = function() {
-        let targetPhone = '';
-        profinLicenses = JSON.parse(localStorage.getItem('profinance_licenses')) || [];
-        const firstWithPhone = profinLicenses.find(l => l.phone && l.phone.trim());
-        if (firstWithPhone) {
-            targetPhone = formatCleanPhone(firstWithPhone.phone);
-        }
+        const targetPhone = '5569992816598';
         const text = encodeURIComponent('Olá! Gostaria de conhecer os planos e adquirir minha chave de acesso ao ProFinance.');
-        const url = targetPhone 
-            ? `https://api.whatsapp.com/send?phone=${targetPhone}&text=${text}`
-            : `https://api.whatsapp.com/send?text=${text}`;
+        const url = `https://api.whatsapp.com/send?phone=${targetPhone}&text=${text}`;
         window.open(url, '_blank');
     };
 
