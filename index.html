@@ -3571,12 +3571,10 @@
     }
 
     // --- SINCRONIZAÇÃO EM NUVEM E MONITORAMENTO CONTÍNUO DE SEGURANÇA (CRM & LICENÇAS) ---
-    const PROFIN_CLOUD_DB_URL = 'https://api.restful-api.dev/objects/ff808181a09d98f701a0c8f39e336db6';
-    const PROFIN_CLOUD_TOPIC = 'https://ntfy.sh/profinance_security_bus_mbtech_2026';
+    const PROFIN_CLOUD_TOPIC = 'https://ntfy.sh/profinance_mbtech_live_bus_2026';
     const profinDeviceId = 'dev_' + Math.random().toString(36).substring(2, 9);
     let isSyncingCRM = false;
     let profinSSE = null;
-    let adminModalPollTimer = null;
 
     // Algoritmo unificado de merge de dados com resolução de conflitos por timestamp e identificador canônico
     function mergeLicensesData(cloudLicenses, cloudRevoked, cloudDeletedIds, cloudPix) {
@@ -3654,7 +3652,7 @@
         if (isSyncingCRM && mode === 'pull') return;
         isSyncingCRM = true;
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 8000);
+        const timeoutId = setTimeout(() => controller.abort(), 6000);
 
         try {
             profinLicenses = deduplicateLicenses(JSON.parse(localStorage.getItem('profinance_licenses')) || []);
@@ -3673,7 +3671,7 @@
                     timestamp: Date.now()
                 };
 
-                // 1. Envia via ntfy.sh (entrega instantânea 0ms via SSE para outros dispositivos + cache de 12 horas)
+                // Envia via ntfy.sh (entrega instantânea 0ms via SSE para outros dispositivos + cache de 12 horas)
                 try {
                     await fetch(PROFIN_CLOUD_TOPIC, {
                         method: 'POST',
@@ -3683,38 +3681,17 @@
                         signal: controller.signal
                     });
                 } catch(e) {}
-
-                // 2. Envia para o restful-api.dev como backup persistente
-                try {
-                    await fetch(PROFIN_CLOUD_DB_URL, {
-                        method: 'PUT',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            name: "mbtech_profinance_crm_store_2026",
-                            data: {
-                                licenses: profinLicenses,
-                                revoked: profinRevokedKeys,
-                                deletedIds: localDeletedIds,
-                                pix: pixKey,
-                                updatedAt: Date.now()
-                            }
-                        }),
-                        keepalive: true,
-                        signal: controller.signal
-                    });
-                } catch(e) {}
             } else {
-                let needsPush = false;
-
-                // 1. Puxa histórico de eventos recentes do ntfy.sh (/json?poll=1)
+                // PULL: Puxa histórico de eventos recentes do ntfy.sh (/json?poll=1&since=12h)
                 try {
-                    const ntfyRes = await fetch(`${PROFIN_CLOUD_TOPIC}/json?poll=1`, {
+                    const ntfyRes = await fetch(`${PROFIN_CLOUD_TOPIC}/json?poll=1&since=12h`, {
                         cache: 'no-store',
                         signal: controller.signal
                     });
                     if (ntfyRes.ok) {
                         const text = await ntfyRes.text();
                         if (text && text.trim()) {
+                            let latestSync = null;
                             const lines = text.trim().split('\n');
                             lines.forEach(line => {
                                 try {
@@ -3722,44 +3699,23 @@
                                     if (evt && evt.message) {
                                         const data = typeof evt.message === 'string' ? JSON.parse(evt.message) : evt.message;
                                         if (data && data.action === 'CRM_SYNC') {
-                                            const hadNew = mergeLicensesData(data.licenses, data.revoked, data.deletedIds, data.pix);
-                                            if (hadNew) needsPush = true;
-                                        } else if (data && data.action === 'REVOKE') {
-                                            const raw = extractRawKey16(data.raw || data.key);
-                                            if (raw && !profinRevokedKeys.includes(raw)) profinRevokedKeys.push(raw);
-                                            if (data.key && !profinRevokedKeys.includes(data.key)) profinRevokedKeys.push(data.key);
-                                            if (data.holder && !profinRevokedKeys.includes(data.holder.toUpperCase())) profinRevokedKeys.push(data.holder.toUpperCase());
-                                            localStorage.setItem('profinance_revoked_keys', JSON.stringify(profinRevokedKeys));
-                                        } else if (data && data.action === 'REACTIVATE') {
-                                            profinRevokedKeys = removeKeyFromRevokedList(data.raw || data.key, data.holder, profinRevokedKeys);
-                                            localStorage.setItem('profinance_revoked_keys', JSON.stringify(profinRevokedKeys));
+                                            if (!latestSync || (data.timestamp || 0) > (latestSync.timestamp || 0)) {
+                                                latestSync = data;
+                                            }
                                         }
                                     }
                                 } catch (e) {}
                             });
+
+                            if (latestSync) {
+                                const hadNew = mergeLicensesData(latestSync.licenses, latestSync.revoked, latestSync.deletedIds, latestSync.pix);
+                                if (hadNew) {
+                                    await syncCloudCRM('push');
+                                }
+                            }
                         }
                     }
                 } catch (err) {}
-
-                // 2. Puxa também do restful-api.dev
-                try {
-                    const dbRes = await fetch(PROFIN_CLOUD_DB_URL, {
-                        cache: 'no-store',
-                        signal: controller.signal
-                    });
-                    if (dbRes.ok) {
-                        const json = await dbRes.json();
-                        if (json && json.data) {
-                            const hadNew = mergeLicensesData(json.data.licenses, json.data.revoked, json.data.deletedIds, json.data.pix);
-                            if (hadNew) needsPush = true;
-                        }
-                    }
-                } catch (err) {}
-
-                // Se houver licenças locais que a nuvem ainda não conhecia, faz push consolidado
-                if (needsPush) {
-                    await syncCloudCRM('push');
-                }
             }
         } catch (err) {
         } finally {
@@ -3797,11 +3753,12 @@
                     if (data.sender && data.sender === profinDeviceId) return;
 
                     if (data.action === 'CRM_SYNC') {
-                        // Recebeu licenças novas em tempo real de outro dispositivo!
                         const hadLocalNew = mergeLicensesData(data.licenses, data.revoked, data.deletedIds, data.pix);
                         if (hadLocalNew) {
-                            // Se este aparelho tinha licenças que o outro não tinha, envia a união de volta
                             syncCloudCRM('push');
+                        }
+                        if (typeof verifyActiveSessionContinuously === 'function') {
+                            verifyActiveSessionContinuously();
                         }
                     } else if (data.action === 'REVOKE') {
                         const raw = extractRawKey16(data.raw || data.key);
@@ -3817,14 +3774,12 @@
                         localStorage.setItem('profinance_revoked_keys', JSON.stringify(profinRevokedKeys));
                         reconcileRevokedKeys();
                         if (typeof renderAdminLicenses === 'function') renderAdminLicenses();
-                    } else if (data.action === 'CRM_UPDATED') {
-                        syncCloudCRM('pull');
                     }
                 } catch (err) {}
             };
 
             profinSSE.onerror = function() {
-                // EventSource do navegador reconecta automaticamente após interrupções de rede
+                // EventSource reconecta automaticamente
             };
         } catch (e) {}
     }
@@ -3909,8 +3864,7 @@
     async function verifyActiveSessionContinuously() {
         if (!currentAuthSession || currentAuthSession.role !== 'client') return;
 
-        // 1. Puxa revogações atualizadas da nuvem
-        await syncCloudRevocations('pull');
+        // Revalida a chave contra a lista local atualizada via SSE em tempo real
 
         // 2. Revalida a chave
         const check = await validateLicenseKey(currentAuthSession.key);
@@ -4357,12 +4311,6 @@
         syncCloudCRM('pull');
         initRealtimeSSE();
 
-        // Polling de 4 segundos enquanto o modal de administrador estiver na tela
-        if (adminModalPollTimer) clearInterval(adminModalPollTimer);
-        adminModalPollTimer = setInterval(() => {
-            syncCloudCRM('pull');
-        }, 4000);
-
         const modal = document.getElementById('admin-modal');
         if (modal) {
             modal.style.setProperty('display', 'flex', 'important');
@@ -4371,10 +4319,6 @@
     };
 
     window.closeAdminModal = function() {
-        if (adminModalPollTimer) {
-            clearInterval(adminModalPollTimer);
-            adminModalPollTimer = null;
-        }
         const modal = document.getElementById('admin-modal');
         if (modal) {
             modal.style.setProperty('display', 'none', 'important');
@@ -4445,6 +4389,17 @@
 
             renderAdminLicenses();
             showToast('Chave de acesso gerada e venda registrada com sucesso!');
+
+            if (profinSecurityBus) {
+                try {
+                    profinSecurityBus.postMessage({
+                        type: 'REVOCATION_SYNC',
+                        keys: profinRevokedKeys,
+                        licenses: profinLicenses
+                    });
+                } catch(e) {}
+            }
+
             await syncCloudCRM('push');
         } catch (err) {
             alert('Erro ao gerar chave: ' + err.message);
@@ -4652,13 +4607,19 @@ Qualquer dúvida ou suporte, estou à disposição! 💼📊`;
         });
     };
 
-    window.toggleRevokeLicense = async function(keyId) {
+    window.toggleRevokeLicense = async function(keyId, holderName) {
         reconcileRevokedKeys();
         profinLicenses = deduplicateLicenses(JSON.parse(localStorage.getItem('profinance_licenses')) || []);
         profinRevokedKeys = JSON.parse(localStorage.getItem('profinance_revoked_keys')) || [];
 
         const targetUid = getLicenseUniqueId(keyId);
-        const lic = profinLicenses.find(l => getLicenseUniqueId(l) === targetUid);
+        const targetHolder = (holderName || '').trim().toUpperCase();
+
+        const lic = profinLicenses.find(l => {
+            const lUid = getLicenseUniqueId(l);
+            const lHolder = (l.holder || '').trim().toUpperCase();
+            return (targetUid && lUid === targetUid) || (targetHolder && lHolder === targetHolder);
+        });
         if (!lic) return;
 
         const hUpper = (lic.holder || '').trim().toUpperCase();
@@ -4668,7 +4629,7 @@ Qualquer dúvida ou suporte, estou à disposição! 💼📊`;
         const isCurrentlyRevoked = lic.status === 'revoked' ||
                                    isKeyRevokedInList(lic.key, lic.holder, profinRevokedKeys) ||
                                    isKeyRevokedInList(lic.id, lic.holder, profinRevokedKeys) ||
-                                   profinRevokedKeys.includes(targetUid);
+                                   (targetUid && profinRevokedKeys.includes(targetUid));
 
         lic.updatedAt = Date.now();
 
@@ -4681,74 +4642,103 @@ Qualquer dúvida ou suporte, estou à disposição! 💼📊`;
             if (kRaw && !profinRevokedKeys.includes(kRaw)) profinRevokedKeys.push(kRaw);
             if (hUpper && !profinRevokedKeys.includes(hUpper)) profinRevokedKeys.push(hUpper);
             showToast(`Licença de "${lic.holder}" revogada!`);
-            await syncCloudRevocations('push', { action: 'REVOKE', raw: kRaw, key: lic.key, holder: lic.holder });
         } else {
             if (!confirm(`Deseja REATIVAR o acesso de "${lic.holder}"? A chave voltará a funcionar normalmente.`)) return;
             lic.status = 'active';
             profinRevokedKeys = removeKeyFromRevokedList(lic.key, lic.holder, profinRevokedKeys);
             profinRevokedKeys = removeKeyFromRevokedList(lic.id, lic.holder, profinRevokedKeys);
-            profinRevokedKeys = removeKeyFromRevokedList(targetUid, lic.holder, profinRevokedKeys);
+            if (targetUid) profinRevokedKeys = removeKeyFromRevokedList(targetUid, lic.holder, profinRevokedKeys);
             showToast(`Licença de "${lic.holder}" reativada com sucesso!`);
-            await syncCloudRevocations('push', { action: 'REACTIVATE', raw: kRaw, key: lic.key, holder: lic.holder });
         }
 
+        // Salva e renderiza IMEDIATAMENTE (0ms de latência na interface)
         profinLicenses = deduplicateLicenses(profinLicenses);
         localStorage.setItem('profinance_licenses', JSON.stringify(profinLicenses));
         localStorage.setItem('profinance_revoked_keys', JSON.stringify(profinRevokedKeys));
         renderAdminLicenses();
 
-        // Notifica todas as abas instantaneamente via BroadcastChannel
         if (profinSecurityBus) {
-            profinSecurityBus.postMessage({
-                type: 'REVOCATION_SYNC',
-                keys: profinRevokedKeys,
-                licenses: profinLicenses
-            });
+            try {
+                profinSecurityBus.postMessage({
+                    type: 'REVOCATION_SYNC',
+                    keys: profinRevokedKeys,
+                    licenses: profinLicenses
+                });
+            } catch(e) {}
         }
-        await syncCloudCRM('push');
+
+        // Sincroniza em nuvem em segundo plano
+        syncCloudCRM('push').catch(() => {});
     };
 
-    window.handleDeleteLicenseRecord = async function(keyId) {
+    window.handleDeleteLicenseRecord = async function(keyId, holderName) {
         if (!confirm('Deseja excluir este registro do histórico de licenças? O bloqueio continuará garantido.')) return;
         profinLicenses = deduplicateLicenses(JSON.parse(localStorage.getItem('profinance_licenses')) || []);
         profinRevokedKeys = JSON.parse(localStorage.getItem('profinance_revoked_keys')) || [];
         let deletedIds = JSON.parse(localStorage.getItem('profinance_deleted_ids')) || [];
 
         const targetUid = getLicenseUniqueId(keyId);
-        const lic = profinLicenses.find(l => getLicenseUniqueId(l) === targetUid);
+        const targetHolder = (holderName || '').trim().toUpperCase();
+
+        const lic = profinLicenses.find(l => {
+            const lUid = getLicenseUniqueId(l);
+            const lHolder = (l.holder || '').trim().toUpperCase();
+            return (targetUid && lUid === targetUid) || (targetHolder && lHolder === targetHolder);
+        });
+
+        const uidsToDelete = new Set();
+        if (targetUid) uidsToDelete.add(targetUid);
+        if (keyId) uidsToDelete.add(getLicenseUniqueId(keyId));
+
         if (lic) {
+            const lUid = getLicenseUniqueId(lic);
+            if (lUid) uidsToDelete.add(lUid);
+            if (lic.id) uidsToDelete.add(getLicenseUniqueId(lic.id));
+            if (lic.key) uidsToDelete.add(getLicenseUniqueId(lic.key));
+
             const hUpper = (lic.holder || '').trim().toUpperCase();
             const kTrim = (lic.key || '').trim();
             const kRaw = extractRawKey16(lic.key);
-            if (targetUid && !profinRevokedKeys.includes(targetUid)) profinRevokedKeys.push(targetUid);
-            if (lic.id && !profinRevokedKeys.includes(lic.id)) profinRevokedKeys.push(lic.id);
-            if (kTrim && !profinRevokedKeys.includes(kTrim)) profinRevokedKeys.push(kTrim);
             if (kRaw && !profinRevokedKeys.includes(kRaw)) profinRevokedKeys.push(kRaw);
+            if (kTrim && !profinRevokedKeys.includes(kTrim)) profinRevokedKeys.push(kTrim);
             if (hUpper && !profinRevokedKeys.includes(hUpper)) profinRevokedKeys.push(hUpper);
-            await syncCloudRevocations('push', { action: 'REVOKE', raw: kRaw, key: lic.key, holder: lic.holder });
         }
 
-        if (targetUid && !deletedIds.includes(targetUid)) {
-            deletedIds.push(targetUid);
-            localStorage.setItem('profinance_deleted_ids', JSON.stringify(deletedIds));
-        }
+        // Registra tombstones para todos os identificadores conhecidos
+        uidsToDelete.forEach(uid => {
+            if (uid && !deletedIds.includes(uid)) deletedIds.push(uid);
+            if (uid && !profinRevokedKeys.includes(uid)) profinRevokedKeys.push(uid);
+        });
+        localStorage.setItem('profinance_deleted_ids', JSON.stringify(deletedIds));
 
-        profinLicenses = profinLicenses.filter(l => getLicenseUniqueId(l) !== targetUid);
+        // Remove imediatamente da lista local
+        profinLicenses = profinLicenses.filter(l => {
+            const lUid = getLicenseUniqueId(l);
+            const lHolder = (l.holder || '').trim().toUpperCase();
+            if (uidsToDelete.has(lUid)) return false;
+            if (targetHolder && lHolder === targetHolder) return false;
+            return true;
+        });
         profinLicenses = deduplicateLicenses(profinLicenses);
 
+        // Atualiza a tela IMEDIATAMENTE (0ms de latência na interface)
         localStorage.setItem('profinance_licenses', JSON.stringify(profinLicenses));
         localStorage.setItem('profinance_revoked_keys', JSON.stringify(profinRevokedKeys));
         renderAdminLicenses();
-        showToast('Registro removido e bloqueio assegurado.');
+        showToast('Registro removido com sucesso!');
 
         if (profinSecurityBus) {
-            profinSecurityBus.postMessage({
-                type: 'REVOCATION_SYNC',
-                keys: profinRevokedKeys,
-                licenses: profinLicenses
-            });
+            try {
+                profinSecurityBus.postMessage({
+                    type: 'REVOCATION_SYNC',
+                    keys: profinRevokedKeys,
+                    licenses: profinLicenses
+                });
+            } catch(e) {}
         }
-        await syncCloudCRM('push');
+
+        // Sincroniza em nuvem em segundo plano
+        syncCloudCRM('push').catch(() => {});
     };
 
     function renderAdminLicenses() {
@@ -4889,6 +4879,9 @@ Qualquer dúvida ou suporte, estou à disposição! 💼📊`;
             const typeLabel = lic.days === '1m' ? '1 Min' : (lic.days === 0 ? 'Vitalício' : `${lic.days} dias`);
             const priceVal = parseFloat(lic.price) || 0;
             const cleanPhone = formatCleanPhone(lic.phone);
+            const uid = getLicenseUniqueId(lic);
+            const safeHolder = (lic.holder || '').replace(/'/g, "\\'");
+            const safeId = (lic.id || uid).replace(/'/g, "\\'");
 
             return `
                 <tr>
@@ -4899,7 +4892,7 @@ Qualquer dúvida ou suporte, estou à disposição! 💼📊`;
                                 📱 ${lic.phone}
                             </a>
                         ` : `
-                            <span style="font-size: 0.72rem; color: var(--text-muted); cursor: pointer;" onclick="sendWhatsAppBilling('${lic.id}')" title="Clique para adicionar WhatsApp">
+                            <span style="font-size: 0.72rem; color: var(--text-muted); cursor: pointer;" onclick="sendWhatsAppBilling('${safeId}')" title="Clique para adicionar WhatsApp">
                                 ➕ Add WhatsApp
                             </span>
                         `}
@@ -4918,19 +4911,19 @@ Qualquer dúvida ou suporte, estou à disposição! 💼📊`;
                     <td>${statusBadge}</td>
                     <td>
                         <div style="display: flex; gap: 0.35rem; align-items: center; flex-wrap: wrap;">
-                            <button type="button" class="btn-whatsapp-action" onclick="sendWhatsAppBilling('${lic.id}')" title="Enviar mensagem de cobrança ou renovação no WhatsApp">
+                            <button type="button" class="btn-whatsapp-action" onclick="sendWhatsAppBilling('${safeId}')" title="Enviar mensagem de cobrança ou renovação no WhatsApp">
                                 💬 WhatsApp
                             </button>
-                            <button type="button" class="btn-renew-action" onclick="handleRenewLicensePrompt('${lic.id}')" title="Renovar assinatura (+30 ou +365 dias)">
+                            <button type="button" class="btn-renew-action" onclick="handleRenewLicensePrompt('${safeId}')" title="Renovar assinatura (+30 ou +365 dias)">
                                 🔄 Renovar
                             </button>
                             <button type="button" class="btn-action-sm" onclick="copyKeyFromTable('${lic.key}')" title="Copiar Chave de Acesso">
                                 📋
                             </button>
-                            <button type="button" class="btn-action-sm" onclick="toggleRevokeLicense('${lic.id}')" title="${isRevoked ? 'Reativar Licença (Liberar Acesso)' : 'Revogar Licença (Bloquear Usuário)'}" style="color: ${isRevoked ? '#10B981' : '#EF4444'}; font-weight: 700; padding: 0.25rem 0.55rem; border-radius: 4px; border: 1px solid ${isRevoked ? 'rgba(16, 185, 129, 0.3)' : 'rgba(239, 68, 68, 0.3)'};">
+                            <button type="button" class="btn-action-sm" onclick="toggleRevokeLicense('${uid}', '${safeHolder}')" title="${isRevoked ? 'Reativar Licença (Liberar Acesso)' : 'Revogar Licença (Bloquear Usuário)'}" style="color: ${isRevoked ? '#10B981' : '#EF4444'}; font-weight: 700; padding: 0.25rem 0.55rem; border-radius: 4px; border: 1px solid ${isRevoked ? 'rgba(16, 185, 129, 0.3)' : 'rgba(239, 68, 68, 0.3)'};">
                                 ${isRevoked ? '🔓 Reativar' : '🚫 Revogar'}
                             </button>
-                            <button type="button" class="btn-action-sm" onclick="handleDeleteLicenseRecord('${lic.id}')" title="Excluir Registro" style="color: #EF4444;">
+                            <button type="button" class="btn-action-sm" onclick="handleDeleteLicenseRecord('${uid}', '${safeHolder}')" title="Excluir Registro" style="color: #EF4444;">
                                 🗑️
                             </button>
                         </div>
