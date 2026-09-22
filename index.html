@@ -3328,11 +3328,25 @@
                 const licUpdated = lic.updatedAt || lic.createdAt || 0;
                 const existingUpdated = existing.updatedAt || existing.createdAt || 0;
 
+                const prevListExisting = Array.isArray(existing.previousKeys) ? existing.previousKeys : [];
+                const prevListLic = Array.isArray(lic.previousKeys) ? lic.previousKeys : [];
+                const mergedPrevKeys = Array.from(new Set([
+                    ...prevListExisting,
+                    ...prevListLic,
+                    existing.key,
+                    existing.id,
+                    lic.key,
+                    lic.id
+                ].filter(Boolean)));
+
                 if (licUpdated >= existingUpdated) {
-                    holderMap.set(keyIdent, { ...existing, ...lic });
+                    const finalPrev = mergedPrevKeys.filter(k => k !== lic.key && k !== lic.id);
+                    holderMap.set(keyIdent, { ...existing, ...lic, previousKeys: finalPrev });
                 } else {
+                    const finalPrev = mergedPrevKeys.filter(k => k !== existing.key && k !== existing.id);
                     if (!existing.phone && lic.phone) existing.phone = lic.phone;
                     if (!existing.price && lic.price) existing.price = lic.price;
+                    existing.previousKeys = finalPrev;
                 }
             }
         });
@@ -3434,7 +3448,7 @@
     };
 
     // Geração de Chave de Licença Inviolável de 16 Caracteres (HMAC-SHA256)
-    async function generateLicenseKey(holderName, durationDays) {
+    async function generateLicenseKey(holderName, durationDays, targetExp = null) {
         const now = Date.now();
         let days = 0;
         let exp = 0;
@@ -3442,13 +3456,16 @@
 
         if (durationDays === '1m') {
             days = '1m';
-            exp = now + (60 * 1000); // 1 minuto exato (60.000 ms)
+            exp = (targetExp && targetExp > now) ? targetExp : (now + (60 * 1000)); // 1 minuto exato (60.000 ms)
             expMin = Math.ceil(exp / 60000);
         } else {
             days = parseInt(durationDays, 10);
             if (days === 0) {
                 exp = 0;
                 expMin = 0; // 0 = Vitalício
+            } else if (targetExp && targetExp > now) {
+                exp = targetExp;
+                expMin = Math.floor(exp / 60000);
             } else {
                 exp = now + (days * 24 * 60 * 60 * 1000);
                 expMin = Math.floor(exp / 60000);
@@ -3555,24 +3572,39 @@
         const rawClean = extractRawKey16(formattedKey);
         const payloadHolder = (payload.h || '').trim().toUpperCase();
 
-        // 3.1 Se o Administrador registrou a licença neste sistema (ou mesma origem):
+        // 3.1 Procura se a licença existe no CRM (por chave atual, anterior ou titular):
         const matchingLic = profinLicenses.find(l => {
             const kRaw = extractRawKey16(l.key);
             const kIdRaw = extractRawKey16(l.id);
             const hUpper = (l.holder || '').trim().toUpperCase();
-            return (rawClean && (kRaw === rawClean || kIdRaw === rawClean)) || 
-                   (payloadHolder && payloadHolder !== 'CLIENTE AUTORIZADO' && hUpper === payloadHolder);
+
+            // Checa chave atual e ID
+            if (rawClean && (kRaw === rawClean || kIdRaw === rawClean)) return true;
+
+            // Checa chaves anteriores (histórico de renovações)
+            if (rawClean && Array.isArray(l.previousKeys)) {
+                const matchedPrev = l.previousKeys.some(prev => {
+                    const prevRaw = extractRawKey16(prev);
+                    return prevRaw && prevRaw === rawClean;
+                });
+                if (matchedPrev) return true;
+            }
+
+            // Checa pelo nome do titular se houver nome válido
+            if (payloadHolder && payloadHolder !== 'CLIENTE AUTORIZADO' && payloadHolder !== 'CLIENTE PROFINANCE' && hUpper === payloadHolder) {
+                return true;
+            }
+            return false;
         });
 
         if (matchingLic) {
-            payload.h = matchingLic.holder; // Atualiza o nome do titular
+            payload.h = matchingLic.holder; // Atualiza o nome do titular para o nome real cadastrado no CRM
             payload.id = matchingLic.id;
+            payload.activeKey = matchingLic.key; // Chave ativa mais recente
 
-            // Se a licença foi renovada no CRM, herda a validade renovada
+            // Se a licença foi renovada ou alterada no CRM, herda a validade do CRM
             if (typeof matchingLic.exp !== 'undefined') {
-                if (matchingLic.exp === 0 || matchingLic.exp > payload.e) {
-                    payload.e = matchingLic.exp;
-                }
+                payload.e = matchingLic.exp;
             }
 
             // Se o Administrador definiu explicitamente como REVOGADA
@@ -3583,6 +3615,11 @@
             if (matchingLic.status === 'active') {
                 profinRevokedKeys = removeKeyFromRevokedList(matchingLic.key, matchingLic.holder, profinRevokedKeys);
                 profinRevokedKeys = removeKeyFromRevokedList(matchingLic.id, matchingLic.holder, profinRevokedKeys);
+                if (Array.isArray(matchingLic.previousKeys)) {
+                    matchingLic.previousKeys.forEach(pk => {
+                        profinRevokedKeys = removeKeyFromRevokedList(pk, matchingLic.holder, profinRevokedKeys);
+                    });
+                }
                 localStorage.setItem('profinance_revoked_keys', JSON.stringify(profinRevokedKeys));
             }
         } else {
@@ -3688,12 +3725,22 @@
                 if (existing) {
                     const existingUpdated = existing.updatedAt || existing.createdAt || 0;
                     const licUpdated = lic.updatedAt || lic.createdAt || 0;
+
+                    const prevExisting = Array.isArray(existing.previousKeys) ? existing.previousKeys : [];
+                    const prevLic = Array.isArray(lic.previousKeys) ? lic.previousKeys : [];
+                    const combinedPrev = Array.from(new Set([...prevExisting, ...prevLic, existing.key, existing.id, lic.key, lic.id].filter(Boolean)));
+
                     if (licUpdated >= existingUpdated) {
+                        const finalPrev = combinedPrev.filter(k => k !== lic.key && k !== lic.id);
                         mergedMap.delete(prevUid);
-                        mergedMap.set(uid, { ...existing, ...lic });
+                        mergedMap.set(uid, { ...existing, ...lic, previousKeys: finalPrev });
                         holderToUidMap.set(holderKey, uid);
                         return;
                     } else {
+                        const finalPrev = combinedPrev.filter(k => k !== existing.key && k !== existing.id);
+                        if (!existing.phone && lic.phone) existing.phone = lic.phone;
+                        if (!existing.price && lic.price) existing.price = lic.price;
+                        existing.previousKeys = finalPrev;
                         return; // O existente já é mais recente
                     }
                 }
@@ -3706,11 +3753,18 @@
                 const existingUpdated = existing.updatedAt || existing.createdAt || 0;
                 const licUpdated = lic.updatedAt || lic.createdAt || 0;
 
+                const prevExisting = Array.isArray(existing.previousKeys) ? existing.previousKeys : [];
+                const prevLic = Array.isArray(lic.previousKeys) ? lic.previousKeys : [];
+                const combinedPrev = Array.from(new Set([...prevExisting, ...prevLic, existing.key, existing.id, lic.key, lic.id].filter(Boolean)));
+
                 if (licUpdated >= existingUpdated) {
-                    mergedMap.set(uid, { ...existing, ...lic });
+                    const finalPrev = combinedPrev.filter(k => k !== lic.key && k !== lic.id);
+                    mergedMap.set(uid, { ...existing, ...lic, previousKeys: finalPrev });
                 } else {
+                    const finalPrev = combinedPrev.filter(k => k !== existing.key && k !== existing.id);
                     if (!existing.phone && lic.phone) existing.phone = lic.phone;
                     if (!existing.price && lic.price) existing.price = lic.price;
+                    existing.previousKeys = finalPrev;
                 }
                 if (holderKey) holderToUidMap.set(holderKey, uid);
             }
@@ -4006,8 +4060,6 @@
     async function verifyActiveSessionContinuously() {
         if (!currentAuthSession || currentAuthSession.role !== 'client') return;
 
-        // Revalida a chave contra a lista local atualizada via SSE em tempo real
-
         // 2. Revalida a chave
         const check = await validateLicenseKey(currentAuthSession.key);
         if (!check.valid) {
@@ -4015,19 +4067,51 @@
             return;
         }
 
-        // 3. Atualiza badge em tempo real com contagem regressiva se estiver prestes a expirar
-        const sessionBadge = document.getElementById('auth-session-badge');
-        if (sessionBadge && currentAuthSession.exp > 0) {
-            const msLeft = currentAuthSession.exp - Date.now();
-            let validityText = '';
-            if (msLeft <= 120000) { // menos de 2 minutos: mostra segundos restantes
-                const secLeft = Math.max(0, Math.ceil(msLeft / 1000));
-                validityText = `${secLeft}s restantes`;
-            } else {
-                const daysLeft = Math.max(0, Math.ceil(msLeft / (1000 * 60 * 60 * 24)));
-                validityText = `${daysLeft} dia${daysLeft === 1 ? '' : 's'}`;
+        // Sincroniza dados atualizados da licença (renovação, alteração de nome, nova chave do CRM)
+        let sessionUpdated = false;
+        if (check.payload) {
+            if (check.payload.h && currentAuthSession.holder !== check.payload.h) {
+                currentAuthSession.holder = check.payload.h;
+                sessionUpdated = true;
             }
-            sessionBadge.innerHTML = `🛡️ <span>${currentAuthSession.holder} (${validityText})</span>`;
+            if (typeof check.payload.e !== 'undefined' && currentAuthSession.exp !== check.payload.e) {
+                currentAuthSession.exp = check.payload.e;
+                sessionUpdated = true;
+            }
+            if (check.payload.activeKey && currentAuthSession.key !== check.payload.activeKey) {
+                currentAuthSession.key = check.payload.activeKey;
+                localStorage.setItem('profinance_saved_client_key', check.payload.activeKey);
+                sessionUpdated = true;
+            }
+            if (sessionUpdated) {
+                sessionStorage.setItem('profinance_auth_session', JSON.stringify(currentAuthSession));
+            }
+        }
+
+        // 3. Atualiza badge em tempo real com contagem regressiva e nome correto
+        const sessionBadge = document.getElementById('auth-session-badge');
+        if (sessionBadge) {
+            sessionBadge.style.display = 'inline-flex';
+            sessionBadge.style.borderColor = 'rgba(16, 185, 129, 0.4)';
+            sessionBadge.style.color = '#10B981';
+
+            if (currentAuthSession.exp === 0) {
+                sessionBadge.innerHTML = `🛡️ <span>${currentAuthSession.holder} (Vitalício)</span>`;
+            } else if (currentAuthSession.exp > 0) {
+                const msLeft = currentAuthSession.exp - Date.now();
+                let validityText = '';
+                if (msLeft <= 0) {
+                    lockAppImmediately('Sua licença expirou.');
+                    return;
+                } else if (msLeft <= 120000) { // menos de 2 minutos: mostra segundos restantes
+                    const secLeft = Math.max(0, Math.ceil(msLeft / 1000));
+                    validityText = `${secLeft}s restantes`;
+                } else {
+                    const daysLeft = Math.max(0, Math.ceil(msLeft / (1000 * 60 * 60 * 24)));
+                    validityText = `${daysLeft} dia${daysLeft === 1 ? '' : 's'}`;
+                }
+                sessionBadge.innerHTML = `🛡️ <span>${currentAuthSession.holder} (${validityText})</span>`;
+            }
         }
     }
     setInterval(verifyActiveSessionContinuously, 2000);
@@ -4339,11 +4423,13 @@
             await syncCloudRevocations('pull');
             const check = await validateLicenseKey(savedKey);
             if (check.valid) {
+                const activeKey = check.payload.activeKey || savedKey;
+                localStorage.setItem('profinance_saved_client_key', activeKey);
                 currentAuthSession = {
                     role: 'client',
                     holder: check.payload.h,
                     exp: check.payload.e,
-                    key: savedKey,
+                    key: activeKey,
                     keyId: check.payload.id
                 };
                 sessionStorage.setItem('profinance_auth_session', JSON.stringify(currentAuthSession));
@@ -4527,6 +4613,7 @@
                 createdAt: result.payload.c,
                 exp: result.payload.e,
                 status: 'active',
+                previousKeys: [],
                 updatedAt: Date.now()
             };
             const newUid = getLicenseUniqueId(newLicRecord);
@@ -4766,23 +4853,54 @@ Qualquer dúvida ou suporte, estou à disposição! 💼📊`;
         }
 
         try {
-            const durationArg = isLifetime ? '0' : addDays;
-            const result = await generateLicenseKey(lic.holder, durationArg);
+            const now = Date.now();
+            let targetExp = 0;
+            let remainingDays = 0;
 
+            if (isLifetime) {
+                targetExp = 0;
+                remainingDays = 0;
+            } else {
+                // Se a licença já está ativa e com expiração futura, acumula os novos dias a partir de lic.exp!
+                const baseTime = (lic.exp && lic.exp > now) ? lic.exp : now;
+                targetExp = baseTime + (addDays * 24 * 60 * 60 * 1000);
+                remainingDays = Math.max(1, Math.ceil((targetExp - now) / (1000 * 60 * 60 * 24)));
+            }
+
+            const durationArg = isLifetime ? '0' : remainingDays;
+            const result = await generateLicenseKey(lic.holder, durationArg, targetExp);
+
+            // Preserva chaves anteriores para que clientes com a chave antiga continuem com acesso e com dias atualizados
+            const prevKeys = Array.isArray(lic.previousKeys) ? [...lic.previousKeys] : [];
+            const oldKey = lic.key;
+            const oldId = lic.id;
+            if (oldKey && !prevKeys.includes(oldKey)) prevKeys.push(oldKey);
+            if (oldId && !prevKeys.includes(oldId)) prevKeys.push(oldId);
+
+            lic.previousKeys = prevKeys;
             lic.key = result.key;
             lic.id = result.payload.id;
-            lic.days = result.payload.d;
-            lic.exp = result.payload.e;
+            lic.days = isLifetime ? 0 : remainingDays;
+            lic.exp = isLifetime ? 0 : targetExp;
             lic.status = 'active';
             lic.price = (parseFloat(lic.price) || 0) + price;
             lic.updatedAt = Date.now();
 
             profinLicenses = deduplicateLicenses(profinLicenses);
             localStorage.setItem('profinance_licenses', JSON.stringify(profinLicenses));
+
+            // Garante que nem a chave nova nem as anteriores permaneçam na lista de revogadas
+            profinRevokedKeys = removeKeyFromRevokedList(lic.key, lic.holder, profinRevokedKeys);
+            profinRevokedKeys = removeKeyFromRevokedList(lic.id, lic.holder, profinRevokedKeys);
+            profinRevokedKeys = removeKeyFromRevokedList(oldKey, lic.holder, profinRevokedKeys);
+            profinRevokedKeys = removeKeyFromRevokedList(oldId, lic.holder, profinRevokedKeys);
+            localStorage.setItem('profinance_revoked_keys', JSON.stringify(profinRevokedKeys));
+
             reconcileRevokedKeys();
             renderAdminLicenses();
 
-            showToast(`Assinatura de "${lic.holder}" renovada com sucesso!`);
+            const renewalInfo = isLifetime ? 'Acesso Vitalício' : `${remainingDays} dias restantes (+${addDays} dias)`;
+            showToast(`Assinatura de "${lic.holder}" renovada com sucesso! (${renewalInfo})`);
 
             if (profinSecurityBus) {
                 try {
