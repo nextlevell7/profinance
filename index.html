@@ -2938,8 +2938,19 @@
 <div id="admin-modal" class="admin-modal-overlay" style="display: none;" onclick="if(event.target === this) closeAdminModal()">
     <div class="admin-modal-dialog">
         <div class="admin-modal-header">
-            <h2>👑 Painel do Administrador <span class="badge-status-active" style="font-size: 0.7rem;">CRM DE VENDAS & CONTROLE</span></h2>
-            <button type="button" class="btn-modal-close" onclick="closeAdminModal()" title="Fechar painel">&times;</button>
+            <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                <h2>👑 Painel do Administrador</h2>
+                <span class="badge-status-active" style="font-size: 0.7rem;">CRM MB TECH</span>
+                <span id="cloud-sync-indicator" style="font-size: 0.75rem; color: #34D399; font-weight: 700; display: inline-flex; align-items: center; gap: 4px; background: rgba(16, 185, 129, 0.12); padding: 2px 8px; border-radius: 999px; border: 1px solid rgba(16, 185, 129, 0.3);">
+                    🟢 Nuvem Conectada
+                </span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 6px;">
+                <button type="button" class="btn-action-sm" onclick="syncCloudCRM('pull').then(() => showToast('✅ Sincronizado com PC & Celular!'))" title="Buscar novas vendas e atualizações da nuvem" style="background: rgba(59, 130, 246, 0.15); border: 1px solid #3B82F6; color: #93C5FD; padding: 0.3rem 0.6rem; border-radius: 6px; font-size: 0.75rem; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 4px;">
+                    🔄 Sincronizar
+                </button>
+                <button type="button" class="btn-modal-close" onclick="closeAdminModal()" title="Fechar painel">&times;</button>
+            </div>
         </div>
         <div class="admin-modal-body">
 
@@ -3518,8 +3529,136 @@
         return { valid: true, payload: payload };
     }
 
-    // --- SINCRONIZAÇÃO EM NUVEM E MONITORAMENTO CONTÍNUO DE SEGURANÇA ---
+    // --- SINCRONIZAÇÃO EM NUVEM E MONITORAMENTO CONTÍNUO DE SEGURANÇA (CRM & LICENÇAS) ---
+    const PROFIN_CLOUD_DB_URL = 'https://api.restful-api.dev/objects/ff808181a09d98f701a0c8f39e336db6';
     const PROFIN_CLOUD_TOPIC = 'https://ntfy.sh/profinance_security_bus_mbtech_2026';
+    let isSyncingCRM = false;
+
+    // Sincronização mestre do CRM de vendas entre todos os dispositivos (PC, Celular, etc.)
+    async function syncCloudCRM(mode = 'pull') {
+        if (isSyncingCRM && mode === 'pull') return;
+        isSyncingCRM = true;
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 4000);
+
+        try {
+            profinLicenses = JSON.parse(localStorage.getItem('profinance_licenses')) || [];
+            profinRevokedKeys = JSON.parse(localStorage.getItem('profinance_revoked_keys')) || [];
+            let localDeletedIds = JSON.parse(localStorage.getItem('profinance_deleted_ids')) || [];
+            const pixKey = localStorage.getItem('profinance_admin_pix') || '';
+
+            if (mode === 'push') {
+                const payload = {
+                    name: "mbtech_profinance_crm_store_2026",
+                    data: {
+                        licenses: profinLicenses,
+                        revoked: profinRevokedKeys,
+                        deletedIds: localDeletedIds,
+                        pix: pixKey,
+                        updatedAt: Date.now()
+                    }
+                };
+                await fetch(PROFIN_CLOUD_DB_URL, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload),
+                    signal: controller.signal
+                });
+
+                // Notifica outros dispositivos abertos em tempo real
+                await fetch(PROFIN_CLOUD_TOPIC, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'CRM_UPDATED', timestamp: Date.now() }),
+                    signal: controller.signal
+                });
+            } else {
+                // PULL & MERGE inteligente: combina dados do PC e do Celular sem perder nada
+                const response = await fetch(PROFIN_CLOUD_DB_URL, {
+                    cache: 'no-store',
+                    signal: controller.signal
+                });
+                if (response.ok) {
+                    const json = await response.json();
+                    if (json && json.data) {
+                        const cloudData = json.data;
+                        const cloudLicenses = Array.isArray(cloudData.licenses) ? cloudData.licenses : [];
+                        const cloudRevoked = Array.isArray(cloudData.revoked) ? cloudData.revoked : [];
+                        const cloudDeletedIds = Array.isArray(cloudData.deletedIds) ? cloudData.deletedIds : [];
+
+                        // 1. Merge de IDs deletados (tombstones de exclusão)
+                        const combinedDeletedIds = Array.from(new Set([...localDeletedIds, ...cloudDeletedIds]));
+                        localStorage.setItem('profinance_deleted_ids', JSON.stringify(combinedDeletedIds));
+
+                        // 2. Merge de licenças com base no timestamp de atualização mais recente
+                        const mergedMap = new Map();
+                        cloudLicenses.forEach(lic => {
+                            if (!lic) return;
+                            const kId = lic.id || extractRawKey16(lic.key);
+                            if (kId && !combinedDeletedIds.includes(kId)) {
+                                mergedMap.set(kId, { ...lic });
+                            }
+                        });
+
+                        let hasNewOrUpdatedLocal = false;
+                        profinLicenses.forEach(lic => {
+                            if (!lic) return;
+                            const kId = lic.id || extractRawKey16(lic.key);
+                            if (!kId || combinedDeletedIds.includes(kId)) return;
+
+                            if (!mergedMap.has(kId)) {
+                                // Licença existe localmente mas ainda não estava na nuvem
+                                mergedMap.set(kId, { ...lic, updatedAt: lic.updatedAt || lic.createdAt || Date.now() });
+                                hasNewOrUpdatedLocal = true;
+                            } else {
+                                const existing = mergedMap.get(kId);
+                                const localUpdated = lic.updatedAt || lic.createdAt || 0;
+                                const cloudUpdated = existing.updatedAt || existing.createdAt || 0;
+
+                                if (localUpdated > cloudUpdated) {
+                                    // Ação local foi mais recente (ex: revogou ou reativou recentemente)
+                                    mergedMap.set(kId, { ...existing, ...lic });
+                                    hasNewOrUpdatedLocal = true;
+                                } else {
+                                    // Nuvem é mais recente ou igual: preenche dados adicionais se faltar
+                                    if (!existing.phone && lic.phone) existing.phone = lic.phone;
+                                    if (!existing.price && lic.price) existing.price = lic.price;
+                                }
+                            }
+                        });
+
+                        profinLicenses = Array.from(mergedMap.values()).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+                        localStorage.setItem('profinance_licenses', JSON.stringify(profinLicenses));
+
+                        // 3. Reconciliação inteligente do status de revogação/reativação
+                        reconcileRevokedKeys();
+
+                        // 4. Chave Pix
+                        if (cloudData.pix && !pixKey) {
+                            localStorage.setItem('profinance_admin_pix', cloudData.pix);
+                        }
+
+                        // Se havia licenças novas/atualizadas ou IDs deletados no local que a nuvem não tinha, atualiza a nuvem
+                        if (hasNewOrUpdatedLocal || combinedDeletedIds.length > cloudDeletedIds.length) {
+                            await syncCloudCRM('push');
+                        }
+
+                        if (typeof renderAdminLicenses === 'function') {
+                            renderAdminLicenses();
+                        }
+                        if (typeof loadAdminPixKey === 'function') {
+                            loadAdminPixKey();
+                        }
+                    }
+                }
+            }
+        } catch (err) {
+            // Silencioso em caso de offline
+        } finally {
+            clearTimeout(timeoutId);
+            isSyncingCRM = false;
+        }
+    }
 
     async function syncCloudRevocations(mode = 'pull', eventData = null) {
         const controller = new AbortController();
@@ -3567,6 +3706,8 @@
                                     } else if (data && data.action === 'REACTIVATE') {
                                         profinRevokedKeys = removeKeyFromRevokedList(data.raw || data.key, data.holder, profinRevokedKeys);
                                         changed = true;
+                                    } else if (data && data.action === 'CRM_UPDATED') {
+                                        syncCloudCRM('pull');
                                     }
                                 }
                             } catch (e) {}
@@ -3881,6 +4022,7 @@
                 exp: 0
             };
             sessionStorage.setItem('profinance_auth_session', JSON.stringify(currentAuthSession));
+            await syncCloudCRM('pull');
 
             if (msg) {
                 msg.className = 'gatekeeper-msg msg-success';
@@ -3974,6 +4116,7 @@
     async function checkAuthSession() {
         // Auto-cura de consistência de licenças
         reconcileRevokedKeys();
+        syncCloudCRM('pull');
 
         // 1. Verificar se há sessão ativa na sessionStorage (útil para reload do admin)
         const sessionJson = sessionStorage.getItem('profinance_auth_session');
@@ -4038,12 +4181,13 @@
     let adminLicenseFilter = 'all';
     let lastGeneratedLicense = null;
 
-    window.saveAdminPixKey = function() {
+    window.saveAdminPixKey = async function() {
         const input = document.getElementById('admin-pix-key');
         if (!input) return;
         const val = input.value.trim();
         localStorage.setItem('profinance_admin_pix', val);
         showToast('Chave Pix salva com sucesso!');
+        await syncCloudCRM('push');
     };
 
     window.loadAdminPixKey = function() {
@@ -4088,6 +4232,7 @@
         }
         loadAdminPixKey();
         renderAdminLicenses();
+        syncCloudCRM('pull');
         const modal = document.getElementById('admin-modal');
         if (modal) {
             modal.style.setProperty('display', 'flex', 'important');
@@ -4134,7 +4279,8 @@
                 days: result.payload.d,
                 createdAt: result.payload.c,
                 exp: result.payload.e,
-                status: 'active'
+                status: 'active',
+                updatedAt: Date.now()
             };
             profinLicenses.unshift(newLicRecord);
             localStorage.setItem('profinance_licenses', JSON.stringify(profinLicenses));
@@ -4159,6 +4305,7 @@
 
             renderAdminLicenses();
             showToast('Chave de acesso gerada e venda registrada com sucesso!');
+            await syncCloudCRM('push');
         } catch (err) {
             alert('Erro ao gerar chave: ' + err.message);
         }
@@ -4341,11 +4488,13 @@ Qualquer dúvida ou suporte, estou à disposição! 💼📊`;
             lic.exp = result.payload.e;
             lic.status = 'active';
             lic.price = (parseFloat(lic.price) || 0) + price;
+            lic.updatedAt = Date.now();
 
             localStorage.setItem('profinance_licenses', JSON.stringify(profinLicenses));
             renderAdminLicenses();
 
             showToast(`Assinatura de "${lic.holder}" renovada com sucesso!`);
+            await syncCloudCRM('push');
 
             if (confirm(`Deseja abrir o WhatsApp para enviar a nova chave de acesso para ${lic.holder}?`)) {
                 sendWhatsAppBilling(lic.id, 'welcome');
@@ -4379,6 +4528,8 @@ Qualquer dúvida ou suporte, estou à disposição! 💼📊`;
                                    isKeyRevokedInList(lic.key, lic.holder, profinRevokedKeys) ||
                                    isKeyRevokedInList(lic.id, lic.holder, profinRevokedKeys);
 
+        lic.updatedAt = Date.now();
+
         if (!isCurrentlyRevoked) {
             if (!confirm(`Deseja realmente REVOGAR o acesso de "${lic.holder}"? O usuário será bloqueado imediatamente.`)) return;
             lic.status = 'revoked';
@@ -4409,12 +4560,14 @@ Qualquer dúvida ou suporte, estou à disposição! 💼📊`;
                 licenses: profinLicenses
             });
         }
+        await syncCloudCRM('push');
     };
 
     window.handleDeleteLicenseRecord = async function(keyId) {
         if (!confirm('Deseja excluir este registro do histórico de licenças? O bloqueio continuará garantido.')) return;
         profinLicenses = JSON.parse(localStorage.getItem('profinance_licenses')) || [];
         profinRevokedKeys = JSON.parse(localStorage.getItem('profinance_revoked_keys')) || [];
+        let deletedIds = JSON.parse(localStorage.getItem('profinance_deleted_ids')) || [];
 
         const lic = profinLicenses.find(l => l.id === keyId);
         if (lic) {
@@ -4426,6 +4579,11 @@ Qualquer dúvida ou suporte, estou à disposição! 💼📊`;
             if (kRaw && !profinRevokedKeys.includes(kRaw)) profinRevokedKeys.push(kRaw);
             if (hUpper && !profinRevokedKeys.includes(hUpper)) profinRevokedKeys.push(hUpper);
             await syncCloudRevocations('push', { action: 'REVOKE', raw: kRaw, key: lic.key, holder: lic.holder });
+        }
+
+        if (keyId && !deletedIds.includes(keyId)) {
+            deletedIds.push(keyId);
+            localStorage.setItem('profinance_deleted_ids', JSON.stringify(deletedIds));
         }
 
         profinLicenses = profinLicenses.filter(l => l.id !== keyId);
@@ -4442,7 +4600,7 @@ Qualquer dúvida ou suporte, estou à disposição! 💼📊`;
                 licenses: profinLicenses
             });
         }
-        await syncCloudRevocations('push');
+        await syncCloudCRM('push');
     };
 
     function renderAdminLicenses() {
