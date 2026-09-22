@@ -3671,7 +3671,18 @@
                     timestamp: Date.now()
                 };
 
-                // Envia via ntfy.sh (entrega instantânea 0ms via SSE para outros dispositivos + cache de 12 horas)
+                // 1. Salva no banco persistente do Netlify (se disponível)
+                try {
+                    await fetch('/.netlify/functions/crm', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload),
+                        keepalive: true,
+                        signal: controller.signal
+                    });
+                } catch(e) {}
+
+                // 2. Envia via ntfy.sh (entrega instantânea 0ms via SSE para outros dispositivos + cache de 12 horas)
                 try {
                     await fetch(PROFIN_CLOUD_TOPIC, {
                         method: 'POST',
@@ -3682,7 +3693,26 @@
                     });
                 } catch(e) {}
             } else {
-                // PULL: Puxa histórico de eventos recentes do ntfy.sh (/json?poll=1&since=12h)
+                let mergedAny = false;
+                let foundCloud = false;
+
+                // 1. Tenta carregar do banco persistente do Netlify
+                try {
+                    const netlifyRes = await fetch('/.netlify/functions/crm', {
+                        cache: 'no-store',
+                        signal: controller.signal
+                    });
+                    if (netlifyRes.ok) {
+                        const json = await netlifyRes.json();
+                        if (json && (Array.isArray(json.licenses) || Array.isArray(json.revoked) || Array.isArray(json.deletedIds))) {
+                            foundCloud = true;
+                            const hadNew = mergeLicensesData(json.licenses, json.revoked, json.deletedIds, json.pix);
+                            if (hadNew) mergedAny = true;
+                        }
+                    }
+                } catch (e) {}
+
+                // 2. Puxa histórico recente do ntfy.sh (/json?poll=1&since=12h)
                 try {
                     const ntfyRes = await fetch(`${PROFIN_CLOUD_TOPIC}/json?poll=1&since=12h`, {
                         cache: 'no-store',
@@ -3708,14 +3738,19 @@
                             });
 
                             if (latestSync) {
+                                foundCloud = true;
                                 const hadNew = mergeLicensesData(latestSync.licenses, latestSync.revoked, latestSync.deletedIds, latestSync.pix);
-                                if (hadNew) {
-                                    await syncCloudCRM('push');
-                                }
+                                if (hadNew) mergedAny = true;
                             }
                         }
                     }
                 } catch (err) {}
+
+                // SOBERANIA DE DADOS:
+                // Se este dispositivo possui licenças e a nuvem estava vazia, ou se mesclamos dados novos, PUSH IMEDIATO!
+                if (mergedAny || (!foundCloud && profinLicenses && profinLicenses.length > 0)) {
+                    await syncCloudCRM('push');
+                }
             }
         } catch (err) {
         } finally {
@@ -4080,6 +4115,9 @@
             };
             sessionStorage.setItem('profinance_auth_session', JSON.stringify(currentAuthSession));
             await syncCloudCRM('pull');
+            if (profinLicenses.length > 0) {
+                await syncCloudCRM('push');
+            }
 
             if (msg) {
                 msg.className = 'gatekeeper-msg msg-success';
@@ -4290,6 +4328,10 @@
         }
         try {
             await syncCloudCRM('pull');
+            if (profinLicenses.length > 0) {
+                await syncCloudCRM('push');
+            }
+            renderAdminLicenses();
             showToast(`✅ Sincronizado! ${profinLicenses.length} licença(s) no painel.`);
         } catch (e) {
             showToast('⚠️ Erro ao sincronizar com a nuvem.');
@@ -4308,8 +4350,14 @@
         }
         loadAdminPixKey();
         renderAdminLicenses();
-        syncCloudCRM('pull');
         initRealtimeSSE();
+
+        syncCloudCRM('pull').then(() => {
+            renderAdminLicenses();
+            if (profinLicenses.length > 0) {
+                syncCloudCRM('push');
+            }
+        });
 
         const modal = document.getElementById('admin-modal');
         if (modal) {
