@@ -4325,7 +4325,7 @@
             if (!result.valid) {
                 if (msg) {
                     msg.className = 'gatekeeper-msg msg-error';
-                    msg.innerHTML = '❌ ' + result.reason;
+                    msg.innerText = '❌ ' + result.reason;
                 }
                 if (btn) {
                     btn.disabled = false;
@@ -5168,9 +5168,14 @@ Qualquer dúvida ou suporte, estou à disposição! 💼📊`;
 
     window.handleDeleteLicenseRecord = async function(keyId, holderName) {
         const targetUid = getLicenseUniqueId(keyId);
-        const targetHolder = (holderName || '').trim().toUpperCase();
+        const tempLics = JSON.parse(localStorage.getItem('profinance_licenses')) || [];
+        const foundLic = tempLics.find(l => {
+            const lUid = getLicenseUniqueId(l);
+            return (targetUid && (lUid === targetUid || l.id === keyId || l.key === keyId));
+        });
+        const targetHolder = (holderName || (foundLic && foundLic.holder) || '').trim().toUpperCase();
         const targetHolderRaw = extractRawKey16(targetHolder);
-        const displayLabel = holderName || keyId || 'este registro';
+        const displayLabel = (foundLic && foundLic.holder) || holderName || keyId || 'este registro';
 
         if (!confirm(`Deseja realmente excluir a licença de "${displayLabel}"? O bloqueio continuará garantido.`)) return;
 
@@ -5381,16 +5386,16 @@ Qualquer dúvida ou suporte, estou à disposição! 💼📊`;
                             <button type="button" class="btn-whatsapp-action" onclick="sendWhatsAppBilling('${safeId}')" title="Enviar mensagem de cobrança ou renovação no WhatsApp">
                                 💬 WhatsApp
                             </button>
-                            <button type="button" class="btn-renew-action" onclick="handleRenewLicensePrompt('${safeId}', '${safeHolder}')" title="Renovar assinatura (+30 ou +365 dias)">
+                            <button type="button" class="btn-renew-action" onclick="handleRenewLicensePrompt('${safeId}')" title="Renovar assinatura (+30 ou +365 dias)">
                                 🔄 Renovar
                             </button>
-                            <button type="button" class="btn-action-sm" onclick="copyKeyFromTable('${lic.key}')" title="Copiar Chave de Acesso">
+                            <button type="button" class="btn-action-sm" onclick="copyKeyFromTable('${escapeHtml(lic.key)}')" title="Copiar Chave de Acesso">
                                 📋
                             </button>
-                            <button type="button" class="btn-action-sm" onclick="toggleRevokeLicense('${uid}', '${safeHolder}')" title="${isRevoked ? 'Reativar Licença (Liberar Acesso)' : 'Revogar Licença (Bloquear Usuário)'}" style="color: ${isRevoked ? '#10B981' : '#EF4444'}; font-weight: 700; padding: 0.25rem 0.55rem; border-radius: 4px; border: 1px solid ${isRevoked ? 'rgba(16, 185, 129, 0.3)' : 'rgba(239, 68, 68, 0.3)'};">
+                            <button type="button" class="btn-action-sm" onclick="toggleRevokeLicense('${safeId}')" title="${isRevoked ? 'Reativar Licença (Liberar Acesso)' : 'Revogar Licença (Bloquear Usuário)'}" style="color: ${isRevoked ? '#10B981' : '#EF4444'}; font-weight: 700; padding: 0.25rem 0.55rem; border-radius: 4px; border: 1px solid ${isRevoked ? 'rgba(16, 185, 129, 0.3)' : 'rgba(239, 68, 68, 0.3)'};">
                                 ${isRevoked ? '🔓 Reativar' : '🚫 Revogar'}
                             </button>
-                            <button type="button" class="btn-action-sm" onclick="handleDeleteLicenseRecord('${uid}', '${safeHolder}')" title="Excluir Registro" style="color: #EF4444;">
+                            <button type="button" class="btn-action-sm" onclick="handleDeleteLicenseRecord('${safeId}')" title="Excluir Registro" style="color: #EF4444;">
                                 🗑️
                             </button>
                         </div>
