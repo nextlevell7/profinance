@@ -8,9 +8,6 @@ try {
 
 let memoryStore = null;
 
-const PROFIN_MASTER_SECRET = process.env.PROFIN_MASTER_SECRET || "PROFIN_MASTER_SECURE_HMAC_KEY_2026_x99_ULTRA";
-const DEFAULT_ADMIN_HASH = "73c737a2fbbdd39c146657e22a4f7fc4a0faca3a41df1dbb13a8fb5be9fb8034";
-
 function safeCompare(a, b) {
   if (typeof a !== "string" || typeof b !== "string") return false;
   const bufA = Buffer.from(a);
@@ -40,10 +37,11 @@ function isRateLimited(ip, maxPerMin = 120) {
 }
 
 function hmacSha256Node(text, secret) {
+  if (!secret) throw new Error("Chave mestra de criptografia indisponível no servidor.");
   return crypto.createHmac("sha256", secret).update(text).digest("hex");
 }
 
-function generateLicenseKeyNode(holderName, durationDays, targetExp = null) {
+function generateLicenseKeyNode(holderName, durationDays, targetExp = null, masterSecret = "") {
   const now = Date.now();
   let days = 0;
   let exp = 0;
@@ -74,8 +72,8 @@ function generateLicenseKeyNode(holderName, durationDays, targetExp = null) {
   const saltPart = saltNum.toString(36).toUpperCase().padStart(3, "0");
   const payloadCode = expPart + saltPart;
 
-  // Assinatura HMAC-SHA256
-  const fullSig = hmacSha256Node(payloadCode, PROFIN_MASTER_SECRET);
+  // Assinatura HMAC-SHA256 gerada com o segredo exclusivo do servidor
+  const fullSig = hmacSha256Node(payloadCode, masterSecret);
   const sigNum = BigInt("0x" + fullSig.substring(0, 12)) % 2821109907456n;
   const sigCode = sigNum.toString(36).toUpperCase().padStart(8, "0");
 
@@ -95,7 +93,7 @@ function generateLicenseKeyNode(holderName, durationDays, targetExp = null) {
   };
 }
 
-function validateKeyNode(rawKey) {
+function validateKeyNode(rawKey, masterSecret = "") {
   if (!rawKey || typeof rawKey !== "string") {
     return { valid: false, reason: "Chave não informada." };
   }
@@ -107,7 +105,7 @@ function validateKeyNode(rawKey) {
   const payloadCode = cleanKey.substring(0, 8);
   const sigCode = cleanKey.substring(8, 16);
 
-  const fullSig = hmacSha256Node(payloadCode, PROFIN_MASTER_SECRET);
+  const fullSig = hmacSha256Node(payloadCode, masterSecret);
   const sigNum = BigInt("0x" + fullSig.substring(0, 12)) % 2821109907456n;
   const expectedSig = sigNum.toString(36).toUpperCase().padStart(8, "0");
 
@@ -131,11 +129,22 @@ function validateKeyNode(rawKey) {
 }
 
 exports.handler = async function(event, context) {
+  // CORS estrito restrito à origem oficial do ProFinance e ambiente seguro
+  const reqOrigin = event.headers["origin"] || event.headers["Origin"] || "";
+  const allowedOrigins = [
+    "https://profinancemax.netlify.app",
+    "http://localhost:8888",
+    "http://127.0.0.1:5500",
+    "http://localhost:3000"
+  ];
+  const corsOrigin = allowedOrigins.includes(reqOrigin) ? reqOrigin : "https://profinancemax.netlify.app";
+
   const headers = {
-    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Origin": corsOrigin,
     "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Legacy-Token",
     "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-    "Content-Type": "application/json"
+    "Content-Type": "application/json",
+    "Vary": "Origin"
   };
 
   if (event.httpMethod === "OPTIONS") {
@@ -169,7 +178,16 @@ exports.handler = async function(event, context) {
     }
     if (!data) data = memoryStore || { licenses: [], revoked: [], deletedIds: [], pix: "", adminHash: "" };
 
-    // Autenticação Estrita do Administrador
+    // Gestão do Segredo Criptográfico Mestre no Banco Netlify Blobs (sem segredos em texto no código)
+    if (!data.masterSecret) {
+      data.masterSecret = process.env.PROFIN_MASTER_SECRET || crypto.randomBytes(32).toString("hex");
+      if (store) {
+        try { await store.setJSON("state", data); } catch (e) { memoryStore = data; }
+      }
+    }
+    const currentSecret = process.env.PROFIN_MASTER_SECRET || data.masterSecret;
+
+    // Autenticação Estrita do Administrador (aceita unicamente a senha configurada no cofre)
     const authHeader = event.headers["authorization"] || event.headers["Authorization"] || "";
     const token = authHeader.replace(/^Bearer\s+/i, "").trim();
     const legacyToken = (event.headers["x-legacy-token"] || event.headers["X-Legacy-Token"] || "").trim();
@@ -177,24 +195,16 @@ exports.handler = async function(event, context) {
     const customAdminHash = data.adminHash || process.env.PROFIN_ADMIN_TOKEN;
     let isAdmin = false;
 
-    if (token) {
-      if (customAdminHash) {
-        // Se já existe uma senha configurada no banco (Netlify Blobs) ou env, APENAS ela é aceita!
-        if (safeCompare(token, customAdminHash)) {
-          isAdmin = true;
-        } else if (legacyToken && safeCompare(legacyToken, customAdminHash) && /^[a-f0-9]{64}$/i.test(token)) {
-          isAdmin = true;
-          data.adminHash = token.toLowerCase();
-          if (store) {
-            try { await store.setJSON("state", data); } catch (e) { memoryStore = data; }
-          } else {
-            memoryStore = data;
-          }
-        }
-      } else {
-        // Se ainda não foi gravada senha personalizada, aceita o DEFAULT_ADMIN_HASH inicial
-        if (safeCompare(token, DEFAULT_ADMIN_HASH)) {
-          isAdmin = true;
+    if (token && customAdminHash) {
+      if (safeCompare(token, customAdminHash)) {
+        isAdmin = true;
+      } else if (legacyToken && safeCompare(legacyToken, customAdminHash) && /^[a-f0-9]{64}$/i.test(token)) {
+        isAdmin = true;
+        data.adminHash = token.toLowerCase();
+        if (store) {
+          try { await store.setJSON("state", data); } catch (e) { memoryStore = data; }
+        } else {
+          memoryStore = data;
         }
       }
     }
@@ -221,14 +231,6 @@ exports.handler = async function(event, context) {
 
       // 0. Ação: Verificação de Autenticação do Administrador Master (para sincronização entre PC e Celular)
       if (payload.action === "ADMIN_AUTH_CHECK") {
-        if (!data.adminHash) {
-          data.adminHash = token || DEFAULT_ADMIN_HASH;
-          if (store) {
-            try { await store.setJSON("state", data); } catch (e) { memoryStore = data; }
-          } else {
-            memoryStore = data;
-          }
-        }
         return {
           statusCode: 200,
           headers,
@@ -278,7 +280,7 @@ exports.handler = async function(event, context) {
         const duration = String(payload.duration || "30").trim().substring(0, 10);
         const price = Math.min(100000, Math.max(0, parseFloat(payload.price) || 0));
 
-        const gen = generateLicenseKeyNode(holder, duration, payload.targetExp);
+        const gen = generateLicenseKeyNode(holder, duration, payload.targetExp, currentSecret);
         const newLicRecord = {
           id: gen.payload.id,
           key: gen.key,
@@ -380,6 +382,7 @@ exports.handler = async function(event, context) {
     if (isAdmin) {
       const safeData = Object.assign({}, data);
       delete safeData.adminHash;
+      delete safeData.masterSecret;
       return {
         statusCode: 200,
         headers,
@@ -434,7 +437,7 @@ exports.handler = async function(event, context) {
       }
 
       // Validação matemática HMAC com segredo do servidor
-      const mathCheck = validateKeyNode(checkKey);
+      const mathCheck = validateKeyNode(checkKey, currentSecret);
       if (mathCheck.valid) {
         return {
           statusCode: 200,

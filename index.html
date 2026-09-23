@@ -3245,12 +3245,17 @@
     // =======================================================
     // SISTEMA DE SEGURANÇA MÁXIMA & AUTENTICAÇÃO BLINDADA
     // =======================================================
-    // Limpeza de credenciais legadas/antigas se existirem
-    const savedLocalPass = localStorage.getItem('profinance_admin_pass');
-    if (savedLocalPass === '9937314286890361836671256cf88709c26bef673d201989e89f73611b55e77b' ||
-        savedLocalPass === '240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9') {
-        localStorage.removeItem('profinance_admin_pass');
-    }
+    // Migração de Segurança: Eliminação de hash administrativo do localStorage (armazenamento estrito em memória de sessão sessionStorage)
+    try {
+        const legacyAdminPass = localStorage.getItem('profinance_admin_pass');
+        if (legacyAdminPass) {
+            if (legacyAdminPass !== '9937314286890361836671256cf88709c26bef673d201989e89f73611b55e77b' &&
+                legacyAdminPass !== '240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9') {
+                sessionStorage.setItem('profinance_admin_pass', legacyAdminPass);
+            }
+            localStorage.removeItem('profinance_admin_pass');
+        }
+    } catch (e) {}
 
     function escapeHtml(text) {
         if (text === null || text === undefined) return '';
@@ -3550,7 +3555,7 @@
 
     // Geração de Chave de Licença Blindada via Servidor Netlify (Chave Mestra Oculta)
     async function generateLicenseKey(holderName, durationDays, targetExp = null) {
-        const adminToken = localStorage.getItem('profinance_admin_pass');
+        const adminToken = sessionStorage.getItem('profinance_admin_pass');
         if (!adminToken) {
             throw new Error('Acesso negado: Autenticação de Administrador Master necessária.');
         }
@@ -3934,7 +3939,7 @@
 
                 // 1. Salva no banco persistente do Netlify (autenticado com token do Administrador)
                 try {
-                    const adminToken = localStorage.getItem('profinance_admin_pass');
+                    const adminToken = sessionStorage.getItem('profinance_admin_pass');
                     if (adminToken) {
                         const pushRes = await fetch('/.netlify/functions/crm', {
                             method: 'POST',
@@ -3947,6 +3952,7 @@
                             signal: controller.signal
                         });
                         if (pushRes.status === 401) {
+                            sessionStorage.removeItem('profinance_admin_pass');
                             localStorage.removeItem('profinance_admin_pass');
                             sessionStorage.removeItem('profinance_auth_session');
                             currentAuthSession = null;
@@ -3960,7 +3966,7 @@
 
                 // 1. Carrega do banco persistente do Netlify com autenticação Bearer
                 try {
-                    const adminToken = localStorage.getItem('profinance_admin_pass');
+                    const adminToken = sessionStorage.getItem('profinance_admin_pass');
                     if (adminToken) {
                         const netlifyRes = await fetch('/.netlify/functions/crm', {
                             cache: 'no-store',
@@ -3970,6 +3976,7 @@
                             signal: controller.signal
                         });
                         if (netlifyRes.status === 401) {
+                            sessionStorage.removeItem('profinance_admin_pass');
                             localStorage.removeItem('profinance_admin_pass');
                             sessionStorage.removeItem('profinance_auth_session');
                             currentAuthSession = null;
@@ -4118,7 +4125,7 @@
     function isAuthorizedSession() {
         if (!currentAuthSession) return false;
         if (currentAuthSession.role === 'admin') {
-            const savedAdminHash = localStorage.getItem('profinance_admin_pass');
+            const savedAdminHash = sessionStorage.getItem('profinance_admin_pass');
             return (currentAuthSession.holder === 'ADMINISTRADOR MASTER' && savedAdminHash && savedAdminHash.length === 64);
         }
         if (currentAuthSession.role === 'client') {
@@ -4431,15 +4438,15 @@
                     const json = await res.json();
                     if (json && json.success) {
                         isValid = true;
-                        // Grava a nova senha neste aparelho (celular/PC) para mantê-lo 100% sincronizado
-                        localStorage.setItem('profinance_admin_pass', hashed);
+                        // Grava a credencial na sessionStorage (memória volátil) e purga qualquer resquício em disco
+                        sessionStorage.setItem('profinance_admin_pass', hashed);
+                        localStorage.removeItem('profinance_admin_pass');
                     }
                 } else if (res.status === 401) {
                     // Servidor rejeitou expressamente a senha!
                     isValid = false;
-                    if (localStorage.getItem('profinance_admin_pass') === hashed) {
-                        localStorage.removeItem('profinance_admin_pass');
-                    }
+                    sessionStorage.removeItem('profinance_admin_pass');
+                    localStorage.removeItem('profinance_admin_pass');
                 }
             } catch (netErr) {
                 // Erro de rede (offline)
@@ -4447,7 +4454,7 @@
 
             // 2. Fallback offline local estrito (APENAS se o servidor não respondeu por queda de conexão)
             if (!isValid && !serverResponded) {
-                const savedAdminHash = localStorage.getItem('profinance_admin_pass');
+                const savedAdminHash = sessionStorage.getItem('profinance_admin_pass');
                 if (savedAdminHash && hashed === savedAdminHash && hashed !== '9937314286890361836671256cf88709c26bef673d201989e89f73611b55e77b') {
                     isValid = true;
                 }
@@ -4574,6 +4581,7 @@
         if (isClient) {
             localStorage.removeItem('profinance_saved_client_key');
         } else {
+            sessionStorage.removeItem('profinance_admin_pass');
             localStorage.removeItem('profinance_admin_pass');
         }
         sessionStorage.removeItem('profinance_auth_session');
@@ -4593,7 +4601,7 @@
             try {
                 const sess = JSON.parse(sessionJson);
                 if (sess && sess.role === 'admin') {
-                    const localToken = localStorage.getItem('profinance_admin_pass');
+                    const localToken = sessionStorage.getItem('profinance_admin_pass');
                     if (!localToken) {
                         sessionStorage.removeItem('profinance_auth_session');
                         return;
@@ -4613,6 +4621,7 @@
                         } else if (checkRes.status === 401) {
                             // Senha mestre antiga ou alterada: invalida sessão e força re-autenticação!
                             sessionStorage.removeItem('profinance_auth_session');
+                            sessionStorage.removeItem('profinance_admin_pass');
                             localStorage.removeItem('profinance_admin_pass');
                             isSessionValid = false;
                         }
@@ -5464,7 +5473,7 @@ Qualquer dúvida ou suporte, estou à disposição! 💼📊`;
             return;
         }
 
-        const savedAdminHash = localStorage.getItem('profinance_admin_pass');
+        const savedAdminHash = sessionStorage.getItem('profinance_admin_pass');
         const curHash = await sha256(curPass);
 
         if (!savedAdminHash || curHash !== savedAdminHash) {
@@ -5473,7 +5482,8 @@ Qualquer dúvida ou suporte, estou à disposição! 💼📊`;
         }
 
         const newHash = await sha256(newPass);
-        localStorage.setItem('profinance_admin_pass', newHash);
+        sessionStorage.setItem('profinance_admin_pass', newHash);
+        localStorage.removeItem('profinance_admin_pass');
 
         // Sincroniza a nova senha imediatamente com o servidor Netlify (autorizado com a senha atual)
         try {
@@ -5486,7 +5496,8 @@ Qualquer dúvida ou suporte, estou à disposição! 💼📊`;
                 body: JSON.stringify({ action: 'UPDATE_ADMIN_PASSWORD', newHash: newHash })
             });
             if (updRes.ok) {
-                localStorage.setItem('profinance_admin_pass', newHash);
+                sessionStorage.setItem('profinance_admin_pass', newHash);
+                localStorage.removeItem('profinance_admin_pass');
             }
         } catch(e) {}
 
