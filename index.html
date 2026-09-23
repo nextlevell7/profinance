@@ -3245,12 +3245,23 @@
     // =======================================================
     // SISTEMA DE SEGURANÇA MÁXIMA & AUTENTICAÇÃO BLINDADA
     // =======================================================
-    const DEFAULT_ADMIN_HASH = '73c737a2fbbdd39c146657e22a4f7fc4a0faca3a41df1dbb13a8fb5be9fb8034';
+    // Limpeza de credenciais legadas/antigas se existirem
     const savedLocalPass = localStorage.getItem('profinance_admin_pass');
     if (savedLocalPass === '9937314286890361836671256cf88709c26bef673d201989e89f73611b55e77b' ||
         savedLocalPass === '240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9') {
         localStorage.removeItem('profinance_admin_pass');
     }
+
+    function escapeHtml(text) {
+        if (text === null || text === undefined) return '';
+        return String(text)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+    }
+
     const PROFIN_CLOUD_SYNC_URL = null; // Desativado para evitar requisições com erro 405
     const profinSecurityBus = (typeof BroadcastChannel !== 'undefined') ? new BroadcastChannel('profinance_security_bus') : null;
 
@@ -3539,13 +3550,15 @@
 
     // Geração de Chave de Licença Blindada via Servidor Netlify (Chave Mestra Oculta)
     async function generateLicenseKey(holderName, durationDays, targetExp = null) {
-        const adminToken = localStorage.getItem('profinance_admin_pass') || DEFAULT_ADMIN_HASH;
+        const adminToken = localStorage.getItem('profinance_admin_pass');
+        if (!adminToken) {
+            throw new Error('Acesso negado: Autenticação de Administrador Master necessária.');
+        }
         const res = await fetch('/.netlify/functions/crm', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${adminToken}`,
-                'X-Legacy-Token': DEFAULT_ADMIN_HASH
+                'Authorization': `Bearer ${adminToken}`
             },
             body: JSON.stringify({
                 action: 'GENERATE_KEY',
@@ -3701,11 +3714,9 @@
     }
 
     // --- SINCRONIZAÇÃO EM NUVEM E MONITORAMENTO CONTÍNUO DE SEGURANÇA (CRM & LICENÇAS) ---
-    const PROFIN_CLOUD_TOPICS = [
-        'https://ntfy.sh/profin_sec_bus_9f8a2e7c',
-        'https://ntfy.sh/profinance_v2_sync'
-    ];
-    const PROFIN_CLOUD_TOPIC = PROFIN_CLOUD_TOPICS[0];
+    // Barramentos públicos terceiros desativados em prol de blindagem total e privacidade LGPD
+    const PROFIN_CLOUD_TOPICS = [];
+    const PROFIN_CLOUD_TOPIC = null;
     const profinDeviceId = 'dev_' + Math.random().toString(36).substring(2, 9);
     let isSyncingCRM = false;
     let profinSSE = null;
@@ -3923,66 +3934,40 @@
 
                 // 1. Salva no banco persistente do Netlify (autenticado com token do Administrador)
                 try {
-                    const adminToken = localStorage.getItem('profinance_admin_pass') || DEFAULT_ADMIN_HASH;
-                    await fetch('/.netlify/functions/crm', {
-                        method: 'POST',
-                        headers: { 
-                            'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${adminToken}`,
-                            'X-Legacy-Token': DEFAULT_ADMIN_HASH
-                        },
-                        body: JSON.stringify(payload),
-                        keepalive: true,
-                        signal: controller.signal
-                    });
-                } catch(e) {}
-
-                // 2. Transmissão em nuvem: NÃO envia dados pessoais de clientes para serviços públicos terceiros!
-                // Envia apenas avisos anônimos de revogação/reativação cifrados em AES-GCM 256-bit
-                const busPayload = {
-                    action: 'CRM_REVOKE_NOTICE',
-                    sender: profinDeviceId,
-                    revoked: profinRevokedKeys,
-                    timestamp: Date.now()
-                };
-                const encryptedData = await encryptBusPayload(busPayload);
-                const sendPayload = encryptedData ? {
-                    action: 'CRM_SECURE_SYNC',
-                    sender: profinDeviceId,
-                    enc: encryptedData,
-                    timestamp: Date.now()
-                } : busPayload;
-
-                PROFIN_CLOUD_TOPICS.forEach(topicUrl => {
-                    try {
-                        fetch(topicUrl, {
+                    const adminToken = localStorage.getItem('profinance_admin_pass');
+                    if (adminToken) {
+                        await fetch('/.netlify/functions/crm', {
                             method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify(sendPayload),
+                            headers: { 
+                                'Content-Type': 'application/json',
+                                'Authorization': `Bearer ${adminToken}`
+                            },
+                            body: JSON.stringify(payload),
                             keepalive: true,
                             signal: controller.signal
-                        }).catch(() => {});
-                    } catch(e) {}
-                });
+                        });
+                    }
+                } catch(e) {}
             } else {
                 let foundCloud = false;
 
                 // 1. Carrega do banco persistente do Netlify com autenticação Bearer
                 try {
-                    const adminToken = localStorage.getItem('profinance_admin_pass') || DEFAULT_ADMIN_HASH;
-                    const netlifyRes = await fetch('/.netlify/functions/crm', {
-                        cache: 'no-store',
-                        headers: {
-                            'Authorization': `Bearer ${adminToken}`,
-                            'X-Legacy-Token': DEFAULT_ADMIN_HASH
-                        },
-                        signal: controller.signal
-                    });
-                    if (netlifyRes.ok) {
-                        const json = await netlifyRes.json();
-                        if (json && (Array.isArray(json.licenses) || Array.isArray(json.revoked) || Array.isArray(json.deletedIds))) {
-                            foundCloud = true;
-                            mergeLicensesData(json.licenses, json.revoked, json.deletedIds, json.pix);
+                    const adminToken = localStorage.getItem('profinance_admin_pass');
+                    if (adminToken) {
+                        const netlifyRes = await fetch('/.netlify/functions/crm', {
+                            cache: 'no-store',
+                            headers: {
+                                'Authorization': `Bearer ${adminToken}`
+                            },
+                            signal: controller.signal
+                        });
+                        if (netlifyRes.ok) {
+                            const json = await netlifyRes.json();
+                            if (json && (Array.isArray(json.licenses) || Array.isArray(json.revoked) || Array.isArray(json.deletedIds))) {
+                                foundCloud = true;
+                                mergeLicensesData(json.licenses, json.revoked, json.deletedIds, json.pix);
+                            }
                         }
                     }
                 } catch (e) {}
@@ -4030,66 +4015,11 @@
         }
     }
 
-    // Receptor em tempo real via Server-Sent Events (SSE) do ntfy.sh (0ms de latência)
+    // Sincronização em tempo real interna:
+    // Barramento ntfy.sh desativado por segurança para impedir injeção de eventos remotos não autorizados.
+    // A integridade entre abas do mesmo dispositivo é garantida pelo BroadcastChannel nativo.
     function initRealtimeSSE() {
-        if (typeof EventSource === 'undefined') return;
-        try {
-            if (profinSSE) {
-                profinSSE.close();
-                profinSSE = null;
-            }
-            profinSSE = new EventSource(`${PROFIN_CLOUD_TOPIC}/sse`);
-
-            profinSSE.onmessage = async function(event) {
-                try {
-                    const evt = JSON.parse(event.data);
-                    if (!evt || !evt.message) return;
-                    let data = typeof evt.message === 'string' ? JSON.parse(evt.message) : evt.message;
-                    if (!data) return;
-
-                    // Ignora mensagens enviadas pelo próprio aparelho
-                    if (data.sender && data.sender === profinDeviceId) return;
-
-                    if (data.enc) {
-                        const dec = await decryptBusPayload(data.enc);
-                        if (dec) data = dec;
-                    }
-
-                    if (data.action === 'CRM_SYNC' || data.action === 'CRM_SECURE_SYNC') {
-                        // Somente o Administrador atualiza dados do CRM
-                        if (currentAuthSession && currentAuthSession.role === 'admin') {
-                            mergeLicensesData(data.licenses, data.revoked, data.deletedIds, data.pix);
-                        }
-                        if (typeof verifyActiveSessionContinuously === 'function') {
-                            verifyActiveSessionContinuously();
-                        }
-                    } else if (data.action === 'CRM_REVOKE_NOTICE' || data.action === 'REVOKE') {
-                        if (Array.isArray(data.revoked)) {
-                            profinRevokedKeys = Array.from(new Set([...profinRevokedKeys, ...data.revoked]));
-                            localStorage.setItem('profinance_revoked_keys', JSON.stringify(profinRevokedKeys));
-                            reconcileRevokedKeys();
-                        }
-                        const raw = extractRawKey16(data.raw || data.key);
-                        if (raw && !profinRevokedKeys.includes(raw)) profinRevokedKeys.push(raw);
-                        if (data.key && !profinRevokedKeys.includes(data.key)) profinRevokedKeys.push(data.key);
-                        if (data.holder && !profinRevokedKeys.includes(data.holder.toUpperCase())) profinRevokedKeys.push(data.holder.toUpperCase());
-                        localStorage.setItem('profinance_revoked_keys', JSON.stringify(profinRevokedKeys));
-                        reconcileRevokedKeys();
-                        if (typeof renderAdminLicenses === 'function' && currentAuthSession?.role === 'admin') renderAdminLicenses();
-                        if (typeof verifyActiveSessionContinuously === 'function') verifyActiveSessionContinuously();
-                    } else if (data.action === 'REACTIVATE') {
-                        profinRevokedKeys = removeKeyFromRevokedList(data.raw || data.key, data.holder, profinRevokedKeys);
-                        localStorage.setItem('profinance_revoked_keys', JSON.stringify(profinRevokedKeys));
-                        reconcileRevokedKeys();
-                        if (typeof renderAdminLicenses === 'function' && currentAuthSession?.role === 'admin') renderAdminLicenses();
-                    }
-                } catch (err) {}
-            };
-
-            profinSSE.onerror = function() {
-                // EventSource reconecta automaticamente
-            };
-        } catch (e) {}
+        return;
     }
 
     // Listener do BroadcastChannel para sincronização instantânea (0ms) entre abas locais
@@ -4174,7 +4104,7 @@
     function isAuthorizedSession() {
         if (!currentAuthSession) return false;
         if (currentAuthSession.role === 'admin') {
-            const savedAdminHash = localStorage.getItem('profinance_admin_pass') || DEFAULT_ADMIN_HASH;
+            const savedAdminHash = localStorage.getItem('profinance_admin_pass');
             return (currentAuthSession.holder === 'ADMINISTRADOR MASTER' && savedAdminHash && savedAdminHash.length === 64);
         }
         if (currentAuthSession.role === 'client') {
@@ -4260,7 +4190,7 @@
             sessionBadge.style.color = '#10B981';
 
             if (currentAuthSession.exp === 0) {
-                sessionBadge.innerHTML = `🛡️ <span>${currentAuthSession.holder} (Vitalício)</span>`;
+                sessionBadge.innerHTML = `🛡️ <span>${escapeHtml(currentAuthSession.holder)} (Vitalício)</span>`;
             } else if (currentAuthSession.exp > 0) {
                 const msLeft = currentAuthSession.exp - Date.now();
                 let validityText = '';
@@ -4274,7 +4204,7 @@
                     const daysLeft = Math.max(0, Math.ceil(msLeft / (1000 * 60 * 60 * 24)));
                     validityText = `${daysLeft} dia${daysLeft === 1 ? '' : 's'}`;
                 }
-                sessionBadge.innerHTML = `🛡️ <span>${currentAuthSession.holder} (${validityText})</span>`;
+                sessionBadge.innerHTML = `🛡️ <span>${escapeHtml(currentAuthSession.holder)} (${validityText})</span>`;
             }
         }
     }
@@ -4490,7 +4420,7 @@
 
             // 2. Fallback offline local estrito (APENAS se o servidor não respondeu por queda de conexão)
             if (!isValid && !serverResponded) {
-                const savedAdminHash = localStorage.getItem('profinance_admin_pass') || DEFAULT_ADMIN_HASH;
+                const savedAdminHash = localStorage.getItem('profinance_admin_pass');
                 if (savedAdminHash && hashed === savedAdminHash && hashed !== '9937314286890361836671256cf88709c26bef673d201989e89f73611b55e77b') {
                     isValid = true;
                 }
@@ -4582,7 +4512,7 @@
                             validityText = `${daysLeft} dia${daysLeft === 1 ? '' : 's'}`;
                         }
                     }
-                    sessionBadge.innerHTML = `🛡️ <span>${currentAuthSession.holder} (${validityText})</span>`;
+                    sessionBadge.innerHTML = `🛡️ <span>${escapeHtml(currentAuthSession.holder)} (${validityText})</span>`;
                     sessionBadge.style.borderColor = 'rgba(16, 185, 129, 0.4)';
                     sessionBadge.style.color = '#10B981';
                 }
@@ -4624,7 +4554,11 @@
             try {
                 const sess = JSON.parse(sessionJson);
                 if (sess && sess.role === 'admin') {
-                    const localToken = localStorage.getItem('profinance_admin_pass') || DEFAULT_ADMIN_HASH;
+                    const localToken = localStorage.getItem('profinance_admin_pass');
+                    if (!localToken) {
+                        sessionStorage.removeItem('profinance_auth_session');
+                        return;
+                    }
                     let isSessionValid = false;
                     try {
                         const checkRes = await fetch('/.netlify/functions/crm', {
@@ -5486,10 +5420,10 @@ Qualquer dúvida ou suporte, estou à disposição! 💼📊`;
             return;
         }
 
-        const savedAdminHash = localStorage.getItem('profinance_admin_pass') || DEFAULT_ADMIN_HASH;
+        const savedAdminHash = localStorage.getItem('profinance_admin_pass');
         const curHash = await sha256(curPass);
 
-        if (curHash !== savedAdminHash) {
+        if (!savedAdminHash || curHash !== savedAdminHash) {
             alert('A senha mestre atual informada está incorreta.');
             return;
         }

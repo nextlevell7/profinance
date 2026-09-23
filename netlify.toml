@@ -2,6 +2,25 @@
   publish = "."
   functions = "netlify/functions"
 
+# Bloqueio estrito de acesso público aos códigos do backend e configurações
+[[redirects]]
+  from = "/netlify/*"
+  to = "/"
+  status = 404
+  force = true
+
+[[redirects]]
+  from = "/package.json"
+  to = "/"
+  status = 404
+  force = true
+
+[[redirects]]
+  from = "/.git/*"
+  to = "/"
+  status = 404
+  force = true
+
 [[headers]]
   for = "/*"
   [headers.values]

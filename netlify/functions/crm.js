@@ -11,6 +11,14 @@ let memoryStore = null;
 const PROFIN_MASTER_SECRET = process.env.PROFIN_MASTER_SECRET || "PROFIN_MASTER_SECURE_HMAC_KEY_2026_x99_ULTRA";
 const DEFAULT_ADMIN_HASH = "73c737a2fbbdd39c146657e22a4f7fc4a0faca3a41df1dbb13a8fb5be9fb8034";
 
+function safeCompare(a, b) {
+  if (typeof a !== "string" || typeof b !== "string") return false;
+  const bufA = Buffer.from(a);
+  const bufB = Buffer.from(b);
+  if (bufA.length !== bufB.length) return false;
+  return crypto.timingSafeEqual(bufA, bufB);
+}
+
 function hmacSha256Node(text, secret) {
   return crypto.createHmac("sha256", secret).update(text).digest("hex");
 }
@@ -140,11 +148,11 @@ exports.handler = async function(event, context) {
     let isAdmin = false;
 
     if (token) {
-      if (token === storedAdminHash) {
+      if (safeCompare(token, storedAdminHash)) {
         isAdmin = true;
-      } else if (token === DEFAULT_ADMIN_HASH) {
+      } else if (safeCompare(token, DEFAULT_ADMIN_HASH)) {
         isAdmin = true;
-      } else if (legacyToken && legacyToken === storedAdminHash && token.length === 64) {
+      } else if (legacyToken && safeCompare(legacyToken, storedAdminHash) && token.length === 64) {
         isAdmin = true;
         data.adminHash = token;
         if (store) {
@@ -356,13 +364,13 @@ exports.handler = async function(event, context) {
       }
     }
 
-    // Consulta padrão pública: apenas chaves revogadas
+    // Consulta padrão pública: sanitizada (não expõe chaves revogadas indiscriminadamente)
     return {
       statusCode: 200,
       headers,
       body: JSON.stringify({
-        revoked: Array.isArray(data.revoked) ? data.revoked : [],
-        status: "ok"
+        status: "ok",
+        message: "ProFinance Security API operational."
       })
     };
   } catch (err) {
