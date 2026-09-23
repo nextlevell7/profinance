@@ -4454,9 +4454,40 @@
 
         try {
             const hashed = await sha256(pass);
-            const savedAdminHash = localStorage.getItem('profinance_admin_pass') || DEFAULT_ADMIN_HASH;
+            let isValid = false;
 
-            if (hashed !== savedAdminHash) {
+            // 1. Validação centralizada no servidor Netlify (sincroniza PC e Celular)
+            try {
+                const res = await fetch('/.netlify/functions/crm', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${hashed}`,
+                        'X-Legacy-Token': DEFAULT_ADMIN_HASH
+                    },
+                    body: JSON.stringify({ action: 'ADMIN_AUTH_CHECK' })
+                });
+                if (res.ok) {
+                    const json = await res.json();
+                    if (json && json.success) {
+                        isValid = true;
+                        // Grava a nova senha neste aparelho (celular) para mantê-lo 100% sincronizado
+                        localStorage.setItem('profinance_admin_pass', hashed);
+                    }
+                }
+            } catch (netErr) {
+                // Se estiver sem internet, recorre à validação offline
+            }
+
+            // 2. Fallback offline local
+            if (!isValid) {
+                const savedAdminHash = localStorage.getItem('profinance_admin_pass');
+                if (savedAdminHash && hashed === savedAdminHash) {
+                    isValid = true;
+                }
+            }
+
+            if (!isValid) {
                 if (msg) {
                     msg.className = 'gatekeeper-msg msg-error';
                     msg.innerText = '❌ Senha mestre incorreta! Acesso negado.';

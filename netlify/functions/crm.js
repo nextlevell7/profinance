@@ -167,6 +167,19 @@ exports.handler = async function(event, context) {
 
       const payload = JSON.parse(event.body || "{}");
 
+      // 0. Ação: Verificação de Autenticação do Administrador Master (para sincronização entre PC e Celular)
+      if (payload.action === "ADMIN_AUTH_CHECK") {
+        return {
+          statusCode: 200,
+          headers,
+          body: JSON.stringify({
+            success: true,
+            message: "Autenticação MASTER confirmada!",
+            adminHash: data.adminHash || ""
+          })
+        };
+      }
+
       // 1. Ação: Alteração de Senha Mestre do Administrador
       if (payload.action === "UPDATE_ADMIN_PASSWORD" && payload.newHash) {
         data.adminHash = payload.newHash;
