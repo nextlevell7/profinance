@@ -9,7 +9,7 @@ try {
 let memoryStore = null;
 
 const PROFIN_MASTER_SECRET = process.env.PROFIN_MASTER_SECRET || "PROFIN_MASTER_SECURE_HMAC_KEY_2026_x99_ULTRA";
-const DEFAULT_ADMIN_HASH = "9937314286890361836671256cf88709c26bef673d201989e89f73611b55e77b";
+const DEFAULT_ADMIN_HASH = "73c737a2fbbdd39c146657e22a4f7fc4a0faca3a41df1dbb13a8fb5be9fb8034";
 
 function hmacSha256Node(text, secret) {
   return crypto.createHmac("sha256", secret).update(text).digest("hex");
@@ -105,7 +105,7 @@ function validateKeyNode(rawKey) {
 exports.handler = async function(event, context) {
   const headers = {
     "Access-Control-Allow-Origin": "*",
-    "Access-Control-Allow-Headers": "Content-Type, Authorization",
+    "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Legacy-Token",
     "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
     "Content-Type": "application/json"
   };
@@ -134,24 +134,23 @@ exports.handler = async function(event, context) {
     // Autenticação do Administrador
     const authHeader = event.headers["authorization"] || event.headers["Authorization"] || "";
     const token = authHeader.replace(/^Bearer\s+/i, "").trim();
-    const legacyToken = (event.headers["x-legacy-token"] || "").trim();
+    const legacyToken = (event.headers["x-legacy-token"] || event.headers["X-Legacy-Token"] || "").trim();
 
-    const storedAdminHash = data.adminHash || process.env.PROFIN_ADMIN_TOKEN;
+    const storedAdminHash = data.adminHash || process.env.PROFIN_ADMIN_TOKEN || DEFAULT_ADMIN_HASH;
     let isAdmin = false;
 
-    if (storedAdminHash) {
-      // Se já existe um hash personalizado configurado, APENAS ele é aceito
-      isAdmin = (token === storedAdminHash);
-    } else {
-      // Se ainda não foi gravado um hash personalizado:
-      // Exige estritamente o DEFAULT_ADMIN_HASH (como token principal ou via X-Legacy-Token)
-      if (token === DEFAULT_ADMIN_HASH) {
+    if (token) {
+      if (token === storedAdminHash) {
         isAdmin = true;
-      } else if (legacyToken === DEFAULT_ADMIN_HASH && token && token.length === 64) {
+      } else if (token === DEFAULT_ADMIN_HASH) {
         isAdmin = true;
-        data.adminHash = token; // Vincula o novo hash do dono de forma autenticada
+      } else if (legacyToken && legacyToken === storedAdminHash && token.length === 64) {
+        isAdmin = true;
+        data.adminHash = token;
         if (store) {
-          try { await store.setJSON("state", data); } catch (e) {}
+          try { await store.setJSON("state", data); } catch (e) { memoryStore = data; }
+        } else {
+          memoryStore = data;
         }
       }
     }

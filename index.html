@@ -3245,8 +3245,10 @@
     // =======================================================
     // SISTEMA DE SEGURANÇA MÁXIMA & AUTENTICAÇÃO BLINDADA
     // =======================================================
-    const DEFAULT_ADMIN_HASH = '9937314286890361836671256cf88709c26bef673d201989e89f73611b55e77b';
-    if (localStorage.getItem('profinance_admin_pass') === '240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9') {
+    const DEFAULT_ADMIN_HASH = '73c737a2fbbdd39c146657e22a4f7fc4a0faca3a41df1dbb13a8fb5be9fb8034';
+    const savedLocalPass = localStorage.getItem('profinance_admin_pass');
+    if (savedLocalPass === '9937314286890361836671256cf88709c26bef673d201989e89f73611b55e77b' ||
+        savedLocalPass === '240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9') {
         localStorage.removeItem('profinance_admin_pass');
     }
     const PROFIN_CLOUD_SYNC_URL = null; // Desativado para evitar requisições com erro 405
@@ -4457,32 +4459,39 @@
             let isValid = false;
 
             // 1. Validação centralizada no servidor Netlify (sincroniza PC e Celular)
+            let serverResponded = false;
             try {
                 const res = await fetch('/.netlify/functions/crm', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${hashed}`,
-                        'X-Legacy-Token': DEFAULT_ADMIN_HASH
+                        'Authorization': `Bearer ${hashed}`
                     },
                     body: JSON.stringify({ action: 'ADMIN_AUTH_CHECK' })
                 });
+                serverResponded = true;
                 if (res.ok) {
                     const json = await res.json();
                     if (json && json.success) {
                         isValid = true;
-                        // Grava a nova senha neste aparelho (celular) para mantê-lo 100% sincronizado
+                        // Grava a nova senha neste aparelho (celular/PC) para mantê-lo 100% sincronizado
                         localStorage.setItem('profinance_admin_pass', hashed);
+                    }
+                } else if (res.status === 401) {
+                    // Servidor rejeitou expressamente a senha!
+                    isValid = false;
+                    if (localStorage.getItem('profinance_admin_pass') === hashed) {
+                        localStorage.removeItem('profinance_admin_pass');
                     }
                 }
             } catch (netErr) {
-                // Se estiver sem internet, recorre à validação offline
+                // Erro de rede (offline)
             }
 
-            // 2. Fallback offline local
-            if (!isValid) {
-                const savedAdminHash = localStorage.getItem('profinance_admin_pass');
-                if (savedAdminHash && hashed === savedAdminHash) {
+            // 2. Fallback offline local estrito (APENAS se o servidor não respondeu por queda de conexão)
+            if (!isValid && !serverResponded) {
+                const savedAdminHash = localStorage.getItem('profinance_admin_pass') || DEFAULT_ADMIN_HASH;
+                if (savedAdminHash && hashed === savedAdminHash && hashed !== '9937314286890361836671256cf88709c26bef673d201989e89f73611b55e77b') {
                     isValid = true;
                 }
             }
@@ -4615,9 +4624,37 @@
             try {
                 const sess = JSON.parse(sessionJson);
                 if (sess && sess.role === 'admin') {
-                    currentAuthSession = sess;
-                    unlockApp();
-                    return;
+                    const localToken = localStorage.getItem('profinance_admin_pass') || DEFAULT_ADMIN_HASH;
+                    let isSessionValid = false;
+                    try {
+                        const checkRes = await fetch('/.netlify/functions/crm', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Authorization': `Bearer ${localToken}`
+                            },
+                            body: JSON.stringify({ action: 'ADMIN_AUTH_CHECK' })
+                        });
+                        if (checkRes.ok) {
+                            isSessionValid = true;
+                        } else if (checkRes.status === 401) {
+                            // Senha mestre antiga ou alterada: invalida sessão e força re-autenticação!
+                            sessionStorage.removeItem('profinance_auth_session');
+                            localStorage.removeItem('profinance_admin_pass');
+                            isSessionValid = false;
+                        }
+                    } catch (e) {
+                        // Offline: só autoriza se não for o hash da senha antiga revogada
+                        if (localToken && localToken !== '9937314286890361836671256cf88709c26bef673d201989e89f73611b55e77b') {
+                            isSessionValid = true;
+                        }
+                    }
+
+                    if (isSessionValid) {
+                        currentAuthSession = sess;
+                        unlockApp();
+                        return;
+                    }
                 }
             } catch (e) {}
         }
@@ -5460,17 +5497,19 @@ Qualquer dúvida ou suporte, estou à disposição! 💼📊`;
         const newHash = await sha256(newPass);
         localStorage.setItem('profinance_admin_pass', newHash);
 
-        // Sincroniza a nova senha imediatamente com o servidor Netlify
+        // Sincroniza a nova senha imediatamente com o servidor Netlify (autorizado com a senha atual)
         try {
-            await fetch('/.netlify/functions/crm', {
+            const updRes = await fetch('/.netlify/functions/crm', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${newHash}`,
-                    'X-Legacy-Token': DEFAULT_ADMIN_HASH
+                    'Authorization': `Bearer ${curHash}`
                 },
                 body: JSON.stringify({ action: 'UPDATE_ADMIN_PASSWORD', newHash: newHash })
             });
+            if (updRes.ok) {
+                localStorage.setItem('profinance_admin_pass', newHash);
+            }
         } catch(e) {}
 
         if (curInput) curInput.value = '';
