@@ -168,13 +168,21 @@ exports.handler = async function(event, context) {
 
       // 0. Ação: Verificação de Autenticação do Administrador Master (para sincronização entre PC e Celular)
       if (payload.action === "ADMIN_AUTH_CHECK") {
+        if (!data.adminHash) {
+          data.adminHash = token || DEFAULT_ADMIN_HASH;
+          if (store) {
+            try { await store.setJSON("state", data); } catch (e) { memoryStore = data; }
+          } else {
+            memoryStore = data;
+          }
+        }
         return {
           statusCode: 200,
           headers,
           body: JSON.stringify({
             success: true,
             message: "Autenticação MASTER confirmada!",
-            adminHash: data.adminHash || ""
+            adminHash: data.adminHash || DEFAULT_ADMIN_HASH
           })
         };
       }
