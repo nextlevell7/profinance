@@ -2513,7 +2513,14 @@
 </div>
 
 <div class="app-container" id="app-container" style="display: none;">
-    <!-- Cabeçalho Principal e Barra de Ferramentas -->
+</div>
+
+<div id="toast">Notificação</div>
+
+<script>
+(() => {
+    'use strict';
+    const __appMarkup = `<!-- Cabeçalho Principal e Barra de Ferramentas -->
     <header class="app-header">
         <div class="brand">
             <div class="brand-icon" title="ProFinance Institutional Banking">
@@ -2632,15 +2639,15 @@
             <div class="summary-cards">
                 <div class="kpi-card kpi-green">
                     <span id="label-card-income">Receitas</span>
-                    <h2 id="card-income">R$ 0,00</h2>
+                    <h2 id="card-income">R\$ 0,00</h2>
                 </div>
                 <div class="kpi-card kpi-red">
                     <span id="label-card-expense">Despesas</span>
-                    <h2 id="card-expense">R$ 0,00</h2>
+                    <h2 id="card-expense">R\$ 0,00</h2>
                 </div>
                 <div class="kpi-card kpi-blue">
                     <span id="label-card-balance">Saldo</span>
-                    <h2 id="card-balance">R$ 0,00</h2>
+                    <h2 id="card-balance">R\$ 0,00</h2>
                 </div>
             </div>
 
@@ -2665,7 +2672,7 @@
                             </select>
                         </div>
                         <div class="form-group col-2">
-                            <label for="amount">Valor Total (R$)</label>
+                            <label for="amount">Valor Total (R\$)</label>
                             <input type="number" id="amount" step="0.01" min="0.01" required placeholder="0,00">
                         </div>
                         <div class="form-group col-3">
@@ -2742,7 +2749,7 @@
                         <h3>Visão Analítica</h3>
                         <span class="period-badge" id="period-display-badge">Mês atual</span>
                     </div>
-                    <h1 id="dark-balance">R$ 0,00</h1>
+                    <h1 id="dark-balance">R\$ 0,00</h1>
                     
                     <div class="progress-container">
                         <div class="progress-header">
@@ -2753,7 +2760,7 @@
                             <div class="progress-bar-fill" id="progress-bar"></div>
                         </div>
                         <p class="progress-caption" id="progress-desc">
-                            De cada R$ 100,00 recebidos, R$ 0,00 foram para despesas.
+                            De cada R\$ 100,00 recebidos, R\$ 0,00 foram para despesas.
                         </p>
                     </div>
                 </div>
@@ -2761,11 +2768,11 @@
                 <div class="dark-stats">
                     <div class="dark-stat-box">
                         <span>Total Receitas</span>
-                        <p id="dark-income" style="color: #10B981;">R$ 0,00</p>
+                        <p id="dark-income" style="color: #10B981;">R\$ 0,00</p>
                     </div>
                     <div class="dark-stat-box">
                         <span>Total Despesas</span>
-                        <p id="dark-expense" style="color: #EF4444;">R$ 0,00</p>
+                        <p id="dark-expense" style="color: #EF4444;">R\$ 0,00</p>
                     </div>
                 </div>
             </div>
@@ -2815,10 +2822,10 @@
                     </div>
                     <div class="form-group">
                         <label for="card-digits-input">Últimos 4 Dígitos</label>
-                        <input type="text" id="card-digits-input" maxlength="4" placeholder="Ex: 8129" required pattern="\d{4}">
+                        <input type="text" id="card-digits-input" maxlength="4" placeholder="Ex: 8129" required pattern="\\d{4}">
                     </div>
                     <div class="form-group">
-                        <label for="card-limit-input">Limite Total (R$)</label>
+                        <label for="card-limit-input">Limite Total (R\$)</label>
                         <input type="number" id="card-limit-input" step="0.01" min="1" required placeholder="Ex: 45000,00">
                     </div>
                     <div class="form-group">
@@ -2897,7 +2904,7 @@
                         <select id="budget-category-select" required></select>
                     </div>
                     <div class="form-group">
-                        <label for="budget-limit-input">Limite Mensal (R$)</label>
+                        <label for="budget-limit-input">Limite Mensal (R\$)</label>
                         <input type="number" id="budget-limit-input" step="0.01" min="1" required placeholder="Ex: 800,00">
                     </div>
                 </div>
@@ -2977,7 +2984,7 @@
                         <span class="admin-kpi-title">Faturamento Total</span>
                         <span class="admin-kpi-icon">💰</span>
                     </div>
-                    <div class="admin-kpi-value" id="kpi-total-revenue">R$ 0,00</div>
+                    <div class="admin-kpi-value" id="kpi-total-revenue">R\$ 0,00</div>
                     <div class="admin-kpi-sub" id="kpi-total-sales-count">0 vendas registradas</div>
                 </div>
 
@@ -3048,20 +3055,20 @@
                             <select id="new-key-duration" required onchange="handleDurationChange(this.value)">
                                 <option value="1m">⏱️ 1 Minuto (Teste Rápido de Expiração)</option>
                                 <option value="7">7 Dias (Avaliação / Teste Grátis)</option>
-                                <option value="30" selected>30 Dias (Mensal - R$ 39,90)</option>
-                                <option value="90">90 Dias (Trimestral - R$ 97,00)</option>
-                                <option value="365">365 Dias (Anual - R$ 247,00)</option>
-                                <option value="0">Vitalício (Sem Expiração - R$ 497,00)</option>
+                                <option value="30" selected>30 Dias (Mensal - R\$ 39,90)</option>
+                                <option value="90">90 Dias (Trimestral - R\$ 97,00)</option>
+                                <option value="365">365 Dias (Anual - R\$ 247,00)</option>
+                                <option value="0">Vitalício (Sem Expiração - R\$ 497,00)</option>
                             </select>
                         </div>
                         <div class="form-group">
-                            <label for="new-key-price">Valor Cobrado / Pago (R$)</label>
+                            <label for="new-key-price">Valor Cobrado / Pago (R\$)</label>
                             <input type="number" id="new-key-price" step="0.01" min="0" placeholder="Ex: 39.90" value="39.90">
                             <div class="quick-chips-wrapper">
-                                <span class="quick-chip" onclick="setQuickPrice(39.90, '30')">R$ 39,90 (Mensal)</span>
-                                <span class="quick-chip" onclick="setQuickPrice(97.00, '90')">R$ 97,00 (Trimestral)</span>
-                                <span class="quick-chip" onclick="setQuickPrice(247.00, '365')">R$ 247,00 (Anual)</span>
-                                <span class="quick-chip" onclick="setQuickPrice(497.00, '0')">R$ 497,00 (Vitalício)</span>
+                                <span class="quick-chip" onclick="setQuickPrice(39.90, '30')">R\$ 39,90 (Mensal)</span>
+                                <span class="quick-chip" onclick="setQuickPrice(97.00, '90')">R\$ 97,00 (Trimestral)</span>
+                                <span class="quick-chip" onclick="setQuickPrice(247.00, '365')">R\$ 247,00 (Anual)</span>
+                                <span class="quick-chip" onclick="setQuickPrice(497.00, '0')">R\$ 497,00 (Vitalício)</span>
                             </div>
                         </div>
                     </div>
@@ -3160,12 +3167,8 @@
             </div>
 
         </div>
-    </div>
-</div>
+    </div>`;
 
-<div id="toast">Notificação</div>
-
-<script>
     // Configurações e Categorias Padrão
     const defaultOrigins = [
         "🚗 Aplicativo / Corridas", "🏢 Governo / Salário", "💼 Trabalho extra", 
@@ -4099,6 +4102,14 @@
         const adminModal = document.getElementById('admin-modal');
 
         if (app) {
+            if (!app.innerHTML.trim() && typeof __appMarkup !== 'undefined') {
+                app.innerHTML = __appMarkup;
+                applyTheme(currentTheme);
+                document.getElementById('date').value = getTodayDateString();
+                document.getElementById('month-filter').value = currentFilterMonth;
+                populateSelects();
+            }
+            
             app.style.setProperty('display', 'none', 'important');
             app.classList.add('auth-hidden');
         }
@@ -5630,7 +5641,7 @@ Qualquer dúvida ou suporte, estou à disposição! 💼📊`;
                 customOrigins.push(trimmed);
                 localStorage.setItem('profinance_custom_origins', JSON.stringify(customOrigins));
             }
-            populateSelects();
+            
             document.getElementById('origin').value = trimmed;
             showToast('Nova origem adicionada!');
         }
@@ -5654,7 +5665,7 @@ Qualquer dúvida ou suporte, estou à disposição! 💼📊`;
                     localStorage.setItem('profinance_deleted_origins', JSON.stringify(deletedOrigins));
                 }
             }
-            populateSelects();
+            
             showToast(`Origem "${selectedVal}" excluída!`);
         }
     };
@@ -5671,7 +5682,7 @@ Qualquer dúvida ou suporte, estou à disposição! 💼📊`;
                 customCategories.push(trimmed);
                 localStorage.setItem('profinance_custom_cats', JSON.stringify(customCategories));
             }
-            populateSelects();
+            
             document.getElementById('category').value = trimmed;
             showToast('Nova categoria adicionada!');
         }
@@ -5695,7 +5706,7 @@ Qualquer dúvida ou suporte, estou à disposição! 💼📊`;
                     localStorage.setItem('profinance_deleted_cats', JSON.stringify(deletedCategories));
                 }
             }
-            populateSelects();
+            
             showToast(`Categoria "${selectedVal}" excluída!`);
         }
     };
@@ -6302,7 +6313,7 @@ Qualquer dúvida ou suporte, estou à disposição! 💼📊`;
         const y = baseDate.getFullYear();
         const m = String(baseDate.getMonth() + 1).padStart(2, '0');
         currentFilterMonth = `${y}-${m}`;
-        document.getElementById('month-filter').value = currentFilterMonth;
+        
         document.getElementById('btn-all-months').classList.remove('active');
         updateDashboard();
     }
@@ -6311,7 +6322,7 @@ Qualquer dúvida ou suporte, estou à disposição! 💼📊`;
         const btnAll = document.getElementById('btn-all-months');
         if (currentFilterMonth === 'all') {
             currentFilterMonth = getTodayDateString().slice(0, 7);
-            document.getElementById('month-filter').value = currentFilterMonth;
+            
             btnAll.classList.remove('active');
         } else {
             currentFilterMonth = 'all';
@@ -6654,7 +6665,7 @@ Qualquer dúvida ou suporte, estou à disposição! 💼📊`;
         document.getElementById('installments').value = '1';
         document.getElementById('installments').disabled = false;
         document.getElementById('is-recurring').checked = false;
-        document.getElementById('date').value = getTodayDateString();
+        
     };
 
     // Exclusão com Confirmação
@@ -6815,7 +6826,7 @@ Qualquer dúvida ou suporte, estou à disposição! 💼📊`;
                 localStorage.setItem('profinance_deleted_origins', JSON.stringify(deletedOrigins));
                 localStorage.setItem('profinance_deleted_cats', JSON.stringify(deletedCategories));
 
-                populateSelects();
+                
                 updateDashboard();
                 showToast('Backup restaurado com sucesso!');
             } catch (err) {
@@ -6827,10 +6838,10 @@ Qualquer dúvida ou suporte, estou à disposição! 💼📊`;
     };
 
     // --- INICIALIZAÇÃO DA APLICAÇÃO & SEGURANÇA ---
-    applyTheme(currentTheme);
-    document.getElementById('date').value = getTodayDateString();
-    document.getElementById('month-filter').value = currentFilterMonth;
-    populateSelects();
+    
+    
+    
+    
     purgeDeletedLicenses();
     checkAuthSession();
     initRealtimeSSE();
@@ -6858,6 +6869,59 @@ Qualquer dúvida ou suporte, estou à disposição! 💼📊`;
     window.addEventListener('focus', function() {
         handleLifecycleSync();
     });
+
+    // --- EXPORTS PARA EVENTOS INLINE ---
+    window.handleBankLogoSecretClick = handleBankLogoSecretClick;
+    window.switchGatekeeperTab = switchGatekeeperTab;
+    window.openBuyAccessWhatsApp = openBuyAccessWhatsApp;
+    window.openAdminModal = openAdminModal;
+    window.changeMonth = changeMonth;
+    window.toggleAllMonths = toggleAllMonths;
+    window.cloneRecurringTransactions = cloneRecurringTransactions;
+    window.exportToCsv = exportToCsv;
+    window.exportToJson = exportToJson;
+    window.toggleTheme = toggleTheme;
+    window.handleLogout = handleLogout;
+    window.addCustomOrigin = addCustomOrigin;
+    window.deleteSelectedOrigin = deleteSelectedOrigin;
+    window.addCustomCategory = addCustomCategory;
+    window.deleteSelectedCategory = deleteSelectedCategory;
+    window.cancelEdit = cancelEdit;
+    window.toggleAddCardForm = toggleAddCardForm;
+    window.toggleAddBudgetForm = toggleAddBudgetForm;
+    window.setQuickFilter = setQuickFilter;
+    window.handleManualSync = handleManualSync;
+    window.closeAdminModal = closeAdminModal;
+    window.saveAdminPixKey = saveAdminPixKey;
+    window.setQuickPrice = setQuickPrice;
+    window.copyGeneratedKey = copyGeneratedKey;
+    window.sendGeneratedKeyWhatsApp = sendGeneratedKeyWhatsApp;
+    window.setAdminLicenseFilter = setAdminLicenseFilter;
+    window.sendWhatsAppBilling = sendWhatsAppBilling;
+    window.handleRenewLicensePrompt = handleRenewLicensePrompt;
+    window.copyKeyFromTable = copyKeyFromTable;
+    window.toggleRevokeLicense = toggleRevokeLicense;
+    window.handleDeleteLicenseRecord = handleDeleteLicenseRecord;
+    window.toggleEditCard = toggleEditCard;
+    window.handleUpdateCard = handleUpdateCard;
+    window.handleDeleteCard = handleDeleteCard;
+    window.handleDeleteBudget = handleDeleteBudget;
+    window.editTransaction = editTransaction;
+    window.deleteTransaction = deleteTransaction;
+    window.handleActivateKey = handleActivateKey;
+    window.formatKeyInput = formatKeyInput;
+    window.handleAdminLogin = handleAdminLogin;
+    window.onMonthFilterChange = onMonthFilterChange;
+    window.handleImportJson = handleImportJson;
+    window.handleTypeChange = handleTypeChange;
+    window.handleSaveCard = handleSaveCard;
+    window.handleSaveBudget = handleSaveBudget;
+    window.handleSearchChange = handleSearchChange;
+    window.handleGenerateKey = handleGenerateKey;
+    window.handleDurationChange = handleDurationChange;
+    window.handleChangeAdminPassword = handleChangeAdminPassword;
+
+})();
 </script>
 
 </body>
