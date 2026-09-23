@@ -111,7 +111,7 @@ function validateKeyNode(rawKey) {
   const sigNum = BigInt("0x" + fullSig.substring(0, 12)) % 2821109907456n;
   const expectedSig = sigNum.toString(36).toUpperCase().padStart(8, "0");
 
-  if (sigCode !== expectedSig) {
+  if (!safeCompare(sigCode, expectedSig)) {
     return { valid: false, reason: "Chave de acesso inválida ou não autorizada." };
   }
 
@@ -143,7 +143,7 @@ exports.handler = async function(event, context) {
   }
 
   // 1. Rate Limiting por IP para proteção contra DoS e força bruta
-  const clientIp = (event.headers["client-ip"] || event.headers["x-forwarded-for"] || "").split(",")[0].trim() || "unknown";
+  const clientIp = (event.headers["client-ip"] || event.headers["x-nf-client-connection-ip"] || event.headers["x-forwarded-for"] || "").split(",")[0].trim() || "unknown";
   if (isRateLimited(clientIp, 120)) {
     return {
       statusCode: 429,
@@ -249,6 +249,13 @@ exports.handler = async function(event, context) {
             body: JSON.stringify({ error: "Hash inválido! O novo hash deve conter exatamente 64 caracteres hexadecimais (SHA-256)." })
           };
         }
+        if (newHash === "9937314286890361836671256cf88709c26bef673d201989e89f73611b55e77b") {
+          return {
+            statusCode: 400,
+            headers,
+            body: JSON.stringify({ error: "Esta senha antiga padrão está na lista de bloqueio de segurança e não pode ser reutilizada." })
+          };
+        }
         data.adminHash = newHash;
         if (store) {
           try { await store.setJSON("state", data); } catch (e) { memoryStore = data; }
@@ -316,9 +323,24 @@ exports.handler = async function(event, context) {
         };
       }
 
-      // 3. Ação: Sincronização geral do CRM (push higienizado)
+      // 3. Ação: Sincronização geral do CRM (push higienizado com validação estrita de tipos)
       if (Array.isArray(payload.licenses)) {
-        data.licenses = payload.licenses.slice(0, 5000);
+        data.licenses = payload.licenses
+          .filter(l => l && typeof l === "object" && !Array.isArray(l))
+          .map(l => ({
+            id: String(l.id || "").replace(/[^a-zA-Z0-9_-]/g, "").substring(0, 50),
+            key: String(l.key || "").replace(/[^a-zA-Z0-9-]/g, "").substring(0, 50),
+            holder: String(l.holder || "").replace(/[\r\n\t]/g, " ").trim().substring(0, 80),
+            phone: String(l.phone || "").replace(/[^\d\+\-\(\)\s]/g, "").trim().substring(0, 25),
+            price: Math.min(100000, Math.max(0, parseFloat(l.price) || 0)),
+            days: String(l.days || "30").trim().substring(0, 10),
+            createdAt: Number(l.createdAt) || Date.now(),
+            exp: Number(l.exp) || 0,
+            status: l.status === "revoked" ? "revoked" : "active",
+            previousKeys: Array.isArray(l.previousKeys) ? l.previousKeys.filter(k => typeof k === "string").map(k => k.substring(0, 50)).slice(0, 20) : [],
+            updatedAt: Number(l.updatedAt) || Date.now()
+          }))
+          .slice(0, 5000);
       }
       if (Array.isArray(payload.revoked)) {
         data.revoked = payload.revoked

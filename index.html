@@ -3936,7 +3936,7 @@
                 try {
                     const adminToken = localStorage.getItem('profinance_admin_pass');
                     if (adminToken) {
-                        await fetch('/.netlify/functions/crm', {
+                        const pushRes = await fetch('/.netlify/functions/crm', {
                             method: 'POST',
                             headers: { 
                                 'Content-Type': 'application/json',
@@ -3946,6 +3946,13 @@
                             keepalive: true,
                             signal: controller.signal
                         });
+                        if (pushRes.status === 401) {
+                            localStorage.removeItem('profinance_admin_pass');
+                            sessionStorage.removeItem('profinance_auth_session');
+                            currentAuthSession = null;
+                            lockAppImmediately('Acesso não autorizado: credencial de administrador inválida.');
+                            return;
+                        }
                     }
                 } catch(e) {}
             } else {
@@ -3962,6 +3969,13 @@
                             },
                             signal: controller.signal
                         });
+                        if (netlifyRes.status === 401) {
+                            localStorage.removeItem('profinance_admin_pass');
+                            sessionStorage.removeItem('profinance_auth_session');
+                            currentAuthSession = null;
+                            lockAppImmediately('Acesso não autorizado: credencial de administrador inválida.');
+                            return;
+                        }
                         if (netlifyRes.ok) {
                             const json = await netlifyRes.json();
                             if (json && (Array.isArray(json.licenses) || Array.isArray(json.revoked) || Array.isArray(json.deletedIds))) {
@@ -4370,12 +4384,25 @@
         }
     };
 
+    let adminFailedAttempts = 0;
+    let adminLockoutTimestamp = 0;
+
     window.handleAdminLogin = async function(e) {
         if (e) e.preventDefault();
         const passInput = document.getElementById('admin-password-input');
         const msg = document.getElementById('gatekeeper-admin-msg');
         const btn = document.getElementById('btn-admin-login');
         const pass = passInput ? passInput.value : '';
+
+        const now = Date.now();
+        if (now < adminLockoutTimestamp) {
+            const secsLeft = Math.ceil((adminLockoutTimestamp - now) / 1000);
+            if (msg) {
+                msg.className = 'gatekeeper-msg msg-error';
+                msg.innerText = `⛔ Tentativas excessivas! Aguarde ${secsLeft}s para tentar novamente.`;
+            }
+            return;
+        }
 
         if (!pass) return;
 
@@ -4427,9 +4454,16 @@
             }
 
             if (!isValid) {
+                adminFailedAttempts++;
+                if (adminFailedAttempts >= 5) {
+                    adminLockoutTimestamp = Date.now() + 30000;
+                    adminFailedAttempts = 0;
+                }
                 if (msg) {
                     msg.className = 'gatekeeper-msg msg-error';
-                    msg.innerText = '❌ Senha mestre incorreta! Acesso negado.';
+                    msg.innerText = adminLockoutTimestamp > Date.now()
+                        ? '⛔ 5 tentativas incorretas! Painel bloqueado temporariamente por 30 segundos.'
+                        : '❌ Senha mestre incorreta! Acesso negado.';
                 }
                 if (btn) {
                     btn.disabled = false;
@@ -4437,6 +4471,9 @@
                 }
                 return;
             }
+
+            adminFailedAttempts = 0;
+            adminLockoutTimestamp = 0;
 
             currentAuthSession = {
                 role: 'admin',
@@ -4536,6 +4573,8 @@
 
         if (isClient) {
             localStorage.removeItem('profinance_saved_client_key');
+        } else {
+            localStorage.removeItem('profinance_admin_pass');
         }
         sessionStorage.removeItem('profinance_auth_session');
         currentAuthSession = null;
@@ -5364,7 +5403,7 @@ Qualquer dúvida ou suporte, estou à disposição! 💼📊`;
                                 📱 ${escapeHtml(lic.phone)}
                             </a>
                         ` : `
-                            <span style="font-size: 0.72rem; color: var(--text-muted); cursor: pointer;" onclick="sendWhatsAppBilling('${safeId}')" title="Clique para adicionar WhatsApp">
+                            <span style="font-size: 0.72rem; color: var(--text-muted); cursor: pointer;" data-id="${escapeHtml(lic.id || uid)}" onclick="sendWhatsAppBilling(this.dataset.id)" title="Clique para adicionar WhatsApp">
                                 ➕ Add WhatsApp
                             </span>
                         `}
@@ -5383,19 +5422,19 @@ Qualquer dúvida ou suporte, estou à disposição! 💼📊`;
                     <td>${statusBadge}</td>
                     <td>
                         <div style="display: flex; gap: 0.35rem; align-items: center; flex-wrap: wrap;">
-                            <button type="button" class="btn-whatsapp-action" onclick="sendWhatsAppBilling('${safeId}')" title="Enviar mensagem de cobrança ou renovação no WhatsApp">
+                            <button type="button" class="btn-whatsapp-action" data-id="${escapeHtml(lic.id || uid)}" onclick="sendWhatsAppBilling(this.dataset.id)" title="Enviar mensagem de cobrança ou renovação no WhatsApp">
                                 💬 WhatsApp
                             </button>
-                            <button type="button" class="btn-renew-action" onclick="handleRenewLicensePrompt('${safeId}')" title="Renovar assinatura (+30 ou +365 dias)">
+                            <button type="button" class="btn-renew-action" data-id="${escapeHtml(lic.id || uid)}" onclick="handleRenewLicensePrompt(this.dataset.id)" title="Renovar assinatura (+30 ou +365 dias)">
                                 🔄 Renovar
                             </button>
-                            <button type="button" class="btn-action-sm" onclick="copyKeyFromTable('${escapeHtml(lic.key)}')" title="Copiar Chave de Acesso">
+                            <button type="button" class="btn-action-sm" data-key="${escapeHtml(lic.key)}" onclick="copyKeyFromTable(this.dataset.key)" title="Copiar Chave de Acesso">
                                 📋
                             </button>
-                            <button type="button" class="btn-action-sm" onclick="toggleRevokeLicense('${safeId}')" title="${isRevoked ? 'Reativar Licença (Liberar Acesso)' : 'Revogar Licença (Bloquear Usuário)'}" style="color: ${isRevoked ? '#10B981' : '#EF4444'}; font-weight: 700; padding: 0.25rem 0.55rem; border-radius: 4px; border: 1px solid ${isRevoked ? 'rgba(16, 185, 129, 0.3)' : 'rgba(239, 68, 68, 0.3)'};">
+                            <button type="button" class="btn-action-sm" data-id="${escapeHtml(lic.id || uid)}" onclick="toggleRevokeLicense(this.dataset.id)" title="${isRevoked ? 'Reativar Licença (Liberar Acesso)' : 'Revogar Licença (Bloquear Usuário)'}" style="color: ${isRevoked ? '#10B981' : '#EF4444'}; font-weight: 700; padding: 0.25rem 0.55rem; border-radius: 4px; border: 1px solid ${isRevoked ? 'rgba(16, 185, 129, 0.3)' : 'rgba(239, 68, 68, 0.3)'};">
                                 ${isRevoked ? '🔓 Reativar' : '🚫 Revogar'}
                             </button>
-                            <button type="button" class="btn-action-sm" onclick="handleDeleteLicenseRecord('${safeId}')" title="Excluir Registro" style="color: #EF4444;">
+                            <button type="button" class="btn-action-sm" data-id="${escapeHtml(lic.id || uid)}" onclick="handleDeleteLicenseRecord(this.dataset.id)" title="Excluir Registro" style="color: #EF4444;">
                                 🗑️
                             </button>
                         </div>
@@ -5734,7 +5773,7 @@ Qualquer dúvida ou suporte, estou à disposição! 💼📊`;
                 </div>
 
                 <div class="card-edit-box">
-                    <button type="button" class="btn-accordion-toggle" onclick="toggleEditCard('${escapeHtml(card.id)}')">
+                    <button type="button" class="btn-accordion-toggle" data-card-id="${escapeHtml(card.id)}" onclick="toggleEditCard(this.dataset.cardId)">
                         <span>Editar cartão e limite</span>
                         <span id="arrow-${escapeHtml(card.id)}">v</span>
                     </button>
@@ -5773,8 +5812,8 @@ Qualquer dúvida ou suporte, estou à disposição! 💼📊`;
                                 </div>
                             </div>
                         </div>
-                        <button type="button" class="btn-dark" style="width: 100%; margin-top: 0.5rem;" onclick="handleUpdateCard('${escapeHtml(card.id)}')">Atualizar</button>
-                        <button type="button" class="btn-card-delete" onclick="handleDeleteCard('${escapeHtml(card.id)}')">Excluir cartão</button>
+                        <button type="button" class="btn-dark" style="width: 100%; margin-top: 0.5rem;" data-card-id="${escapeHtml(card.id)}" onclick="handleUpdateCard(this.dataset.cardId)">Atualizar</button>
+                        <button type="button" class="btn-card-delete" data-card-id="${escapeHtml(card.id)}" onclick="handleDeleteCard(this.dataset.cardId)">Excluir cartão</button>
                     </div>
                 </div>
             </div>
@@ -5958,7 +5997,7 @@ Qualquer dúvida ou suporte, estou à disposição! 💼📊`;
             <div class="budget-card">
                 <div class="budget-top">
                     <span class="budget-cat-name">${escapeHtml(b.category)}</span>
-                    <button type="button" class="budget-delete-btn" onclick="handleDeleteBudget('${escapeHtml(b.category)}')" title="Excluir esta meta">🗑️</button>
+                    <button type="button" class="budget-delete-btn" data-category="${escapeHtml(b.category)}" onclick="handleDeleteBudget(this.dataset.category)" title="Excluir esta meta">🗑️</button>
                 </div>
                 <div class="budget-values">
                     <span class="budget-spent" style="color: ${percent >= 100 ? 'var(--danger)' : 'var(--text-main)'}">
@@ -6435,8 +6474,8 @@ Qualquer dúvida ou suporte, estou à disposição! 💼📊`;
                     <td class="${isIncome ? 'val-income' : 'val-expense'}">${formatCurrency(t.amount)}${descHtml}</td>
                     <td>
                         <div class="table-actions">
-                            <button type="button" class="btn-action-sm btn-edit" onclick="editTransaction('${escapeHtml(t.id)}')">Editar</button>
-                            <button type="button" class="btn-action-sm btn-delete" onclick="deleteTransaction('${escapeHtml(t.id)}')">Excluir</button>
+                            <button type="button" class="btn-action-sm btn-edit" data-id="${escapeHtml(t.id)}" onclick="editTransaction(this.dataset.id)">Editar</button>
+                            <button type="button" class="btn-action-sm btn-delete" data-id="${escapeHtml(t.id)}" onclick="deleteTransaction(this.dataset.id)">Excluir</button>
                         </div>
                     </td>
                 `;
