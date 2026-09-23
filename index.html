@@ -3243,9 +3243,8 @@
     let historyChartInstance = null;
 
     // =======================================================
-    // SISTEMA DE SEGURANÇA MÁXIMA & CRIPTOGRAFIA HMAC-SHA256 (ESTILO AUDITOR 99)
+    // SISTEMA DE SEGURANÇA MÁXIMA & AUTENTICAÇÃO BLINDADA
     // =======================================================
-    const PROFIN_MASTER_SECRET = 'PROFIN_MASTER_SECURE_HMAC_KEY_2026_x99_ULTRA';
     const DEFAULT_ADMIN_HASH = '9937314286890361836671256cf88709c26bef673d201989e89f73611b55e77b';
     if (localStorage.getItem('profinance_admin_pass') === '240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9') {
         localStorage.removeItem('profinance_admin_pass');
@@ -3274,7 +3273,7 @@
         return bufToHex(hashBuf);
     }
 
-    async function hmacSha256(message, secret = PROFIN_MASTER_SECRET) {
+    async function hmacSha256(message, secret = 'PROFIN_INTERNAL_SIG_KEY') {
         const enc = new TextEncoder();
         const keyData = enc.encode(secret);
         const cryptoKey = await window.crypto.subtle.importKey(
@@ -3302,7 +3301,7 @@
 
     // Criptografia e decodificação blindada de barramento (AES-GCM 256-bit com Web Crypto)
     async function getBusCryptoKey() {
-        const keyHash = await window.crypto.subtle.digest('SHA-256', new TextEncoder().encode(PROFIN_MASTER_SECRET));
+        const keyHash = await window.crypto.subtle.digest('SHA-256', new TextEncoder().encode('PROFIN_SEC_BUS_2026_SALT'));
         return window.crypto.subtle.importKey('raw', keyHash, { name: 'AES-GCM' }, false, ['encrypt', 'decrypt']);
     }
 
@@ -3536,121 +3535,90 @@
         el.value = formatted;
     };
 
-    // Geração de Chave de Licença Inviolável de 16 Caracteres (HMAC-SHA256)
+    // Geração de Chave de Licença Blindada via Servidor Netlify (Chave Mestra Oculta)
     async function generateLicenseKey(holderName, durationDays, targetExp = null) {
-        const now = Date.now();
-        let days = 0;
-        let exp = 0;
-        let expMin = 0;
+        const adminToken = localStorage.getItem('profinance_admin_pass') || DEFAULT_ADMIN_HASH;
+        const res = await fetch('/.netlify/functions/crm', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${adminToken}`
+            },
+            body: JSON.stringify({
+                action: 'GENERATE_KEY',
+                holder: holderName,
+                duration: durationDays,
+                targetExp: targetExp
+            })
+        });
 
-        if (durationDays === '1m') {
-            days = '1m';
-            exp = (targetExp && targetExp > now) ? targetExp : (now + (60 * 1000)); // 1 minuto exato (60.000 ms)
-            expMin = Math.ceil(exp / 60000);
-        } else {
-            days = parseInt(durationDays, 10);
-            if (days === 0) {
-                exp = 0;
-                expMin = 0; // 0 = Vitalício
-            } else if (targetExp && targetExp > now) {
-                exp = targetExp;
-                expMin = Math.floor(exp / 60000);
-            } else {
-                exp = now + (days * 24 * 60 * 60 * 1000);
-                expMin = Math.floor(exp / 60000);
+        if (res.ok) {
+            const data = await res.json();
+            if (data && data.success) {
+                return {
+                    key: data.key,
+                    rawKey: data.key.replace(/[^A-Z0-9]/gi, ''),
+                    payload: data.payload,
+                    license: data.license
+                };
             }
         }
-
-        // 8 caracteres de Payload: 5 para data (precisão de minuto Base36) + 3 aleatórios
-        const expPart = expMin.toString(36).toUpperCase().padStart(5, '0');
-        const saltNum = Math.floor(Math.random() * 46656);
-        const saltPart = saltNum.toString(36).toUpperCase().padStart(3, '0');
-        const payloadCode = expPart + saltPart; // 8 chars
-
-        // Assinatura HMAC-SHA256 truncada para 8 caracteres Base36 (36^8 = ~2.8 trilhões de combinações)
-        const fullSig = await hmacSha256(payloadCode, PROFIN_MASTER_SECRET);
-        const sigNum = BigInt('0x' + fullSig.substring(0, 12)) % 2821109907456n;
-        const sigCode = sigNum.toString(36).toUpperCase().padStart(8, '0'); // 8 chars
-
-        const raw16 = payloadCode + sigCode; // 16 caracteres exatos
-        const formattedKey = `${raw16.substring(0, 4)}-${raw16.substring(4, 8)}-${raw16.substring(8, 12)}-${raw16.substring(12, 16)}`;
-
-        const payloadObj = {
-            id: 'K' + raw16,
-            h: holderName ? holderName.trim().toUpperCase() : 'CLIENTE PROFINANCE',
-            d: days,
-            e: exp,
-            c: now
-        };
-
-        return {
-            key: formattedKey,
-            rawKey: raw16,
-            payload: payloadObj
-        };
+        throw new Error('Falha ao gerar chave no servidor. Verifique sua conexão e autenticação de Administrador.');
     }
 
-    // Validação Matemática de Chave de Licença (Suporta 16 Caracteres e Legadas)
+    // Validação Segura de Chave de Licença via Servidor
     async function validateLicenseKey(rawKey) {
         if (!rawKey || typeof rawKey !== 'string') {
             return { valid: false, reason: 'Chave não informada.' };
         }
         const trimmed = rawKey.trim();
-
-        // 1. Suporte retrocompatível para chaves legadas no formato PROFIN-xxx-xxx
-        if (trimmed.startsWith('PROFIN-')) {
-            const parts = trimmed.split('-');
-            if (parts.length === 3) {
-                const b64Payload = parts[1];
-                const signature = parts[2].toUpperCase();
-                const expectedFullSig = await hmacSha256(b64Payload, PROFIN_MASTER_SECRET);
-                const expectedSig = expectedFullSig.substring(0, 16).toUpperCase();
-                if (signature !== expectedSig) {
-                    return { valid: false, reason: 'Assinatura inválida! Chave adulterada.' };
-                }
-                try {
-                    const jsonStr = b64DecodeUnicode(b64Payload);
-                    const payload = JSON.parse(jsonStr);
-                    return checkLicenseStatusAndExpiry(payload, trimmed);
-                } catch (e) {
-                    return { valid: false, reason: 'Dados corrompidos na chave legada.' };
-                }
-            }
-        }
-
-        // 2. Validação da Nova Chave de 16 Caracteres (XXXX-XXXX-XXXX-XXXX ou XXXXXXXXXXXXXXXX)
         const cleanKey = trimmed.replace(/[^A-Z0-9]/gi, '').toUpperCase();
         if (cleanKey.length !== 16) {
             return { valid: false, reason: 'Formato inválido! A chave deve conter 16 caracteres (Ex: ABCD-EFGH-IJKL-MNOP).' };
         }
 
-        const payloadCode = cleanKey.substring(0, 8);
-        const sigCode = cleanKey.substring(8, 16);
-
-        // 2.1 Verificação matemática da assinatura HMAC-SHA256
-        const fullSig = await hmacSha256(payloadCode, PROFIN_MASTER_SECRET);
-        const sigNum = BigInt('0x' + fullSig.substring(0, 12)) % 2821109907456n;
-        const expectedSig = sigNum.toString(36).toUpperCase().padStart(8, '0');
-
-        if (sigCode !== expectedSig) {
-            return { valid: false, reason: 'Chave de acesso inválida ou não autorizada!' };
-        }
-
-        // 2.2 Decodificação da validade
-        const expPart = payloadCode.substring(0, 5);
-        const expMin = parseInt(expPart, 36);
-        const exp = expMin === 0 ? 0 : (expMin * 60000);
-
         const formattedKey = `${cleanKey.substring(0, 4)}-${cleanKey.substring(4, 8)}-${cleanKey.substring(8, 12)}-${cleanKey.substring(12, 16)}`;
 
-        const payload = {
-            id: 'K' + cleanKey,
-            h: 'CLIENTE AUTORIZADO',
-            e: exp,
-            cleanKey: cleanKey
-        };
+        // 1. Validação online contra a Netlify Function (onde reside a Chave Mestra e o banco de licenças)
+        try {
+            const res = await fetch(`/.netlify/functions/crm?key=${encodeURIComponent(cleanKey)}`, { cache: 'no-store' });
+            if (res.ok) {
+                const data = await res.json();
+                if (data.valid) {
+                    const payload = {
+                        id: 'K' + cleanKey,
+                        h: data.holder || 'CLIENTE AUTORIZADO',
+                        e: typeof data.exp !== 'undefined' ? data.exp : 0,
+                        cleanKey: cleanKey,
+                        activeKey: formattedKey
+                    };
+                    return checkLicenseStatusAndExpiry(payload, formattedKey);
+                } else {
+                    const reason = data.status === 'revoked'
+                        ? 'Esta licença foi revogada pelo Administrador.'
+                        : (data.reason || 'Chave de acesso inválida ou não autorizada!');
+                    return { valid: false, reason: reason };
+                }
+            }
+        } catch (err) {
+            // 2. Fallback offline: se o cliente já ativou esta chave anteriormente neste dispositivo
+            const savedKey = localStorage.getItem('profinance_saved_client_key');
+            if (savedKey && savedKey.replace(/[^A-Z0-9]/gi, '').toUpperCase() === cleanKey) {
+                const sess = JSON.parse(sessionStorage.getItem('profinance_auth_session') || '{}');
+                if (sess && sess.holder) {
+                    const payload = {
+                        id: 'K' + cleanKey,
+                        h: sess.holder,
+                        e: typeof sess.exp !== 'undefined' ? sess.exp : 0,
+                        cleanKey: cleanKey,
+                        activeKey: savedKey
+                    };
+                    return checkLicenseStatusAndExpiry(payload, formattedKey);
+                }
+            }
+        }
 
-        return checkLicenseStatusAndExpiry(payload, formattedKey);
+        return { valid: false, reason: 'Não foi possível validar a chave com o servidor. Verifique sua conexão à internet.' };
     }
 
     function checkLicenseStatusAndExpiry(payload, formattedKey) {
@@ -5457,6 +5425,18 @@ Qualquer dúvida ou suporte, estou à disposição! 💼📊`;
 
         const newHash = await sha256(newPass);
         localStorage.setItem('profinance_admin_pass', newHash);
+
+        // Sincroniza a nova senha imediatamente com o servidor Netlify
+        try {
+            await fetch('/.netlify/functions/crm', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${newHash}`
+                },
+                body: JSON.stringify({ action: 'UPDATE_ADMIN_PASSWORD', newHash: newHash })
+            });
+        } catch(e) {}
 
         if (curInput) curInput.value = '';
         if (newInput) newInput.value = '';
