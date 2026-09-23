@@ -134,6 +134,7 @@ exports.handler = async function(event, context) {
     // Autenticação do Administrador
     const authHeader = event.headers["authorization"] || event.headers["Authorization"] || "";
     const token = authHeader.replace(/^Bearer\s+/i, "").trim();
+    const legacyToken = (event.headers["x-legacy-token"] || "").trim();
 
     const storedAdminHash = data.adminHash || process.env.PROFIN_ADMIN_TOKEN;
     let isAdmin = false;
@@ -142,10 +143,13 @@ exports.handler = async function(event, context) {
       // Se já existe um hash personalizado configurado, APENAS ele é aceito
       isAdmin = (token === storedAdminHash);
     } else {
-      // Se ainda não foi gravado um hash personalizado: aceita hash SHA256 do dono ou o default inicial
-      isAdmin = (token === DEFAULT_ADMIN_HASH) || (token && token.length === 64);
-      if (isAdmin && token && token.length === 64 && token !== DEFAULT_ADMIN_HASH) {
-        data.adminHash = token; // Salva o hash personalizado permanentemente
+      // Se ainda não foi gravado um hash personalizado:
+      // Exige estritamente o DEFAULT_ADMIN_HASH (como token principal ou via X-Legacy-Token)
+      if (token === DEFAULT_ADMIN_HASH) {
+        isAdmin = true;
+      } else if (legacyToken === DEFAULT_ADMIN_HASH && token && token.length === 64) {
+        isAdmin = true;
+        data.adminHash = token; // Vincula o novo hash do dono de forma autenticada
         if (store) {
           try { await store.setJSON("state", data); } catch (e) {}
         }

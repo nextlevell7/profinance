@@ -3542,7 +3542,8 @@
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${adminToken}`
+                'Authorization': `Bearer ${adminToken}`,
+                'X-Legacy-Token': DEFAULT_ADMIN_HASH
             },
             body: JSON.stringify({
                 action: 'GENERATE_KEY',
@@ -3925,7 +3926,8 @@
                         method: 'POST',
                         headers: { 
                             'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${adminToken}`
+                            'Authorization': `Bearer ${adminToken}`,
+                            'X-Legacy-Token': DEFAULT_ADMIN_HASH
                         },
                         body: JSON.stringify(payload),
                         keepalive: true,
@@ -3969,7 +3971,8 @@
                     const netlifyRes = await fetch('/.netlify/functions/crm', {
                         cache: 'no-store',
                         headers: {
-                            'Authorization': `Bearer ${adminToken}`
+                            'Authorization': `Bearer ${adminToken}`,
+                            'X-Legacy-Token': DEFAULT_ADMIN_HASH
                         },
                         signal: controller.signal
                     });
@@ -5348,10 +5351,10 @@ Qualquer dúvida ou suporte, estou à disposição! 💼📊`;
             return `
                 <tr>
                     <td>
-                        <div style="font-weight: 700; color: var(--text-main); font-size: 0.88rem;">${lic.holder}</div>
+                        <div style="font-weight: 700; color: var(--text-main); font-size: 0.88rem;">${escapeHtml(lic.holder)}</div>
                         ${lic.phone ? `
                             <a href="https://wa.me/${cleanPhone}" target="_blank" style="display: inline-flex; align-items: center; gap: 0.25rem; font-size: 0.74rem; color: #10B981; text-decoration: none; margin-top: 0.15rem;">
-                                📱 ${lic.phone}
+                                📱 ${escapeHtml(lic.phone)}
                             </a>
                         ` : `
                             <span style="font-size: 0.72rem; color: var(--text-muted); cursor: pointer;" onclick="sendWhatsAppBilling('${safeId}')" title="Clique para adicionar WhatsApp">
@@ -5432,7 +5435,8 @@ Qualquer dúvida ou suporte, estou à disposição! 💼📊`;
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${newHash}`
+                    'Authorization': `Bearer ${newHash}`,
+                    'X-Legacy-Token': DEFAULT_ADMIN_HASH
                 },
                 body: JSON.stringify({ action: 'UPDATE_ADMIN_PASSWORD', newHash: newHash })
             });
