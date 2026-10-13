@@ -4837,9 +4837,11 @@ window.onerror = function(msg, url, line, col, error) {
             if (!app.innerHTML.trim() && typeof __appMarkup !== 'undefined') {
                 app.innerHTML = __appMarkup;
                 applyTheme(currentTheme);
-                document.getElementById('date').value = getTodayDateString();
-                document.getElementById('month-filter').value = currentFilterMonth;
-                populateSelects();
+                const dt = document.getElementById('date');
+                if (dt) dt.value = getTodayDateString();
+                const mf = document.getElementById('month-filter');
+                if (mf) mf.value = currentFilterMonth;
+                if (typeof populateSelects === 'function') populateSelects();
             }
             app.style.setProperty('display', 'flex', 'important');
             app.classList.remove('auth-hidden');
@@ -4877,8 +4879,10 @@ window.onerror = function(msg, url, line, col, error) {
             }
         }
 
-        updateDashboard();
-
+        reloadAllMemoryVariables();
+        try {
+            if (typeof updateDashboard === 'function') updateDashboard();
+        } catch(e) {}
     }
 
     function reloadAllMemoryVariables() {
@@ -4908,11 +4912,16 @@ window.onerror = function(msg, url, line, col, error) {
             deletedCategories = JSON.parse(localStorage.getItem('profinance_deleted_cats')) || [];
         } catch(e) { deletedCategories = []; }
 
-        if (typeof populateSelects === 'function') populateSelects();
-        if (typeof renderCards === 'function') renderCards();
-        if (typeof renderBudgets === 'function') renderBudgets();
-        if (typeof renderFixedBillsGrid === 'function') renderFixedBillsGrid();
-        if (typeof updateDashboard === 'function') updateDashboard();
+        const app = document.getElementById('app-container');
+        const isAppReady = app && app.style.display !== 'none' && document.getElementById('month-filter');
+
+        if (isAppReady) {
+            try { if (typeof populateSelects === 'function') populateSelects(); } catch(e){}
+            try { if (typeof renderCards === 'function') renderCards(); } catch(e){}
+            try { if (typeof renderBudgets === 'function') renderBudgets(); } catch(e){}
+            try { if (typeof renderFixedBillsGrid === 'function') renderFixedBillsGrid(); } catch(e){}
+            try { if (typeof updateDashboard === 'function') updateDashboard(); } catch(e){}
+        }
     }
     window.reloadAllMemoryVariables = reloadAllMemoryVariables;
 
@@ -6916,11 +6925,16 @@ Qualquer dúvida ou suporte, estou à disposição! 💼📊`;
     // --- ATUALIZAÇÃO DO DASHBOARD E TABELA ---
     function updateDashboard(refreshCharts = true) {
         if (!isAuthorizedSession()) return;
+        const app = document.getElementById('app-container');
+        if (!app || app.style.display === 'none') return;
+
+        const filterInput = document.getElementById('month-filter');
+        if (!filterInput) return;
+
         if (typeof syncRecurringBillsAcrossMonths === 'function') {
             syncRecurringBillsAcrossMonths();
         }
         const tableBody = document.getElementById('table-body');
-        const filterInput = document.getElementById('month-filter');
         
         if (currentFilterMonth !== 'all') {
             filterInput.value = currentFilterMonth;
@@ -6929,13 +6943,19 @@ Qualquer dúvida ou suporte, estou à disposição! 💼📊`;
         const isAll = currentFilterMonth === 'all';
         const labelText = getMonthLabel(currentFilterMonth);
 
-        // Atualizar títulos dos cards
+        // Atualizar títulos dos cards com segurança
         const periodSuffix = isAll ? "gerais" : "do mês";
-        document.getElementById('label-card-income').innerText = `Receitas ${periodSuffix}`;
-        document.getElementById('label-card-expense').innerText = `Despesas ${periodSuffix}`;
-        document.getElementById('label-card-balance').innerText = `Saldo ${periodSuffix}`;
-        document.getElementById('period-display-badge').innerText = isAll ? "Geral (Todos os meses)" : labelText;
-        document.getElementById('filter-display-title').innerText = labelText;
+        const elIncome = document.getElementById('label-card-income');
+        const elExpense = document.getElementById('label-card-expense');
+        const elBalance = document.getElementById('label-card-balance');
+        const elPeriodBadge = document.getElementById('period-display-badge');
+        const elFilterTitle = document.getElementById('filter-display-title');
+
+        if (elIncome) elIncome.innerText = `Receitas ${periodSuffix}`;
+        if (elExpense) elExpense.innerText = `Despesas ${periodSuffix}`;
+        if (elBalance) elBalance.innerText = `Saldo ${periodSuffix}`;
+        if (elPeriodBadge) elPeriodBadge.innerText = isAll ? "Geral (Todos os meses)" : labelText;
+        if (elFilterTitle) elFilterTitle.innerText = labelText;
 
         // 1. Filtrar pelo mês de competência
         const periodTransactions = getActiveTransactions().filter(t => {
