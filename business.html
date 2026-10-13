@@ -143,10 +143,22 @@
               /* =======================================================
              VERSÃO MOBILE OTIMIZADA PARA O ERP (SMARTPHONES E TABLETS)
              ======================================================= */
-          @media (max-width: 900px) {
+          @media (max-width: 1024px) {
+              html, body {
+                  height: auto !important;
+                  min-height: 100% !important;
+                  overflow-x: hidden !important;
+                  overflow-y: auto !important;
+                  -webkit-overflow-scrolling: touch !important;
+              }
               body {
                   flex-direction: column !important;
-                  overflow-x: hidden;
+                  display: flex !important;
+                  height: auto !important;
+                  min-height: 100vh !important;
+                  overflow: visible !important;
+                  overflow-y: auto !important;
+                  position: relative !important;
               }
               .sidebar {
                   width: 100% !important;
@@ -183,7 +195,11 @@
               .main-content {
                   padding: 15px !important;
                   height: auto !important;
+                  max-height: none !important;
+                  flex: 1 0 auto !important;
+                  overflow: visible !important;
                   overflow-y: visible !important;
+                  display: block !important;
               }
               
               .kpi-grid, .charts-grid {
