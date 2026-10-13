@@ -7882,10 +7882,6 @@ function exportToCsv() {
     window.handleImportJson = handleImportJson;
     window.handleTypeChange = handleTypeChange;
     window.handleSaveCard = handleSaveCard;
-    window.deleteFixedBill = deleteFixedBill;
-    window.handleSaveFixedBill = handleSaveFixedBill;
-    window.renderFixedBillsGrid = renderFixedBillsGrid;
-    window.toggleAddFixedBillForm = toggleAddFixedBillForm;
     window.handleSaveBudget = handleSaveBudget;
     window.handleSearchChange = handleSearchChange;
     window.handleGenerateKey = handleGenerateKey;
@@ -7963,7 +7959,7 @@ function exportToCsv() {
     };
 
 
-window.renderFixedBillsGrid = function() {
+function renderFixedBillsGrid() {
     const grid = document.getElementById('fixed-bills-grid');
     const badge = document.getElementById('fb-summary-badge');
     if (!grid) return;
@@ -8040,9 +8036,10 @@ window.renderFixedBillsGrid = function() {
         
         grid.appendChild(card);
     });
-};
+}
+window.renderFixedBillsGrid = renderFixedBillsGrid;
 
-window.deleteFixedBill = function(name, amount, day) {
+function deleteFixedBill(name, amount, day) {
     const formattedAmount = typeof formatCurrency === 'function' ? formatCurrency(amount) : 'R$ ' + Number(amount).toFixed(2).replace('.', ',');
     const msgConfirm = `Deseja realmente EXCLUIR a conta fixa "${name}" (${formattedAmount} - Todo dia ${day})?\n\nIsso removerá a recorrência desta conta das suas Contas Fixas.`;
     
@@ -8080,9 +8077,10 @@ window.deleteFixedBill = function(name, amount, day) {
     }
 
     showToast(`🗑️ Conta fixa "${name}" excluída com sucesso!`);
-};
+}
+window.deleteFixedBill = deleteFixedBill;
 
-window.toggleAddFixedBillForm = function(show = true) {
+function toggleAddFixedBillForm(show = true) {
     const container = document.getElementById('add-fixed-bill-container');
     const btn = document.getElementById('btn-toggle-add-fixed-bill');
     if (!container || !btn) return;
@@ -8095,9 +8093,10 @@ window.toggleAddFixedBillForm = function(show = true) {
         container.style.display = 'none';
         btn.style.display = 'flex';
     }
-};
+}
+window.toggleAddFixedBillForm = toggleAddFixedBillForm;
 
-window.handleSaveFixedBill = function(e) {
+function handleSaveFixedBill(e) {
     if (e) e.preventDefault();
     const descInput = document.getElementById('fb-desc');
     const amountInput = document.getElementById('fb-amount');
@@ -8141,7 +8140,8 @@ window.handleSaveFixedBill = function(e) {
     if (typeof checkDueFixedBills === 'function') checkDueFixedBills();
     toggleAddFixedBillForm(false);
     showToast(`✅ Conta fixa "${desc}" cadastrada com sucesso!`);
-};
+}
+window.handleSaveFixedBill = handleSaveFixedBill;
 
 
 
