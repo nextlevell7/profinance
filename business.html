@@ -4,6 +4,16 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ProFinance ERP - Gestão Empresarial</title>
+    <script>
+        (function() {
+            const hasAdmin = sessionStorage.getItem('profinance_admin_pass') === '9937314286890361836671256cf88709c26bef673d201989e89f73611b55e77b';
+            const hasClient = localStorage.getItem('profinance_saved_client_key');
+            const authSession = sessionStorage.getItem('profinance_auth_session');
+            if (!hasAdmin && !hasClient && !authSession) {
+                window.location.replace('index.html');
+            }
+        })();
+    </script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
             <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
