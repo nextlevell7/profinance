@@ -6685,9 +6685,94 @@ Qualquer dúvida ou suporte, estou à disposição! 💼📊`;
         }
     };
 
+    // --- SINCRONIZAÇÃO AUTOMÁTICA DE CONTAS FIXAS NOS MESES SEGUINTES ---
+    function syncRecurringBillsAcrossMonths(monthsAhead = 12) {
+        if (!transactions || !Array.isArray(transactions)) return;
+        
+        // Identifica modelos únicos de contas fixas recorrentes
+        const seen = new Set();
+        const uniqueTemplates = [];
+        transactions.forEach(t => {
+            if (!t.isRecurring || !t.date) return;
+            if ((t.profile || 'personal') !== (typeof currentProfile !== 'undefined' ? currentProfile : 'personal')) return;
+            const parts = t.date.split('-');
+            const day = parts[2] || '01';
+            const name = (t.desc || t.category || '').trim().toLowerCase();
+            const key = (t.type || 'expense') + '_' + name + '_' + Number(t.amount) + '_' + day;
+            if (!seen.has(key)) {
+                seen.add(key);
+                uniqueTemplates.push(t);
+            }
+        });
+
+        if (uniqueTemplates.length === 0) return;
+
+        let hasChanges = false;
+        const today = new Date();
+        const curYear = today.getFullYear();
+        const curMonth = today.getMonth();
+
+        const targetMonths = new Set();
+        for (let i = 0; i <= monthsAhead; i++) {
+            const d = new Date(curYear, curMonth + i, 1);
+            const y = d.getFullYear();
+            const m = String(d.getMonth() + 1).padStart(2, '0');
+            targetMonths.add(`${y}-${m}`);
+        }
+        if (typeof currentFilterMonth !== 'undefined' && currentFilterMonth && currentFilterMonth !== 'all' && /^\d{4}-\d{2}$/.test(currentFilterMonth)) {
+            targetMonths.add(currentFilterMonth);
+        }
+
+        targetMonths.forEach(mStr => {
+            const [tY, tM] = mStr.split('-').map(Number);
+            const maxDays = new Date(tY, tM, 0).getDate();
+
+            uniqueTemplates.forEach(bill => {
+                const billName = (bill.desc || bill.category || '').trim().toLowerCase();
+                const originalDay = parseInt(bill.date.split('-')[2], 10) || 1;
+                const targetDay = Math.min(originalDay, maxDays).toString().padStart(2, '0');
+                const targetDate = `${mStr}-${targetDay}`;
+
+                const exists = transactions.some(t => {
+                    if ((t.profile || 'personal') !== (bill.profile || 'personal')) return false;
+                    if (t.type !== bill.type || !t.isRecurring) return false;
+                    if (!t.date || !t.date.startsWith(mStr)) return false;
+                    const tName = (t.desc || t.category || '').trim().toLowerCase();
+                    const tDay = parseInt(t.date.split('-')[2], 10);
+                    return tName === billName && Math.abs(Number(t.amount) - Number(bill.amount)) < 0.01 && tDay === parseInt(targetDay, 10);
+                });
+
+                if (!exists) {
+                    transactions.push({
+                        id: Date.now().toString() + '-' + Math.random().toString(36).substr(2, 5),
+                        date: targetDate,
+                        type: bill.type,
+                        origin: bill.origin || 'Conta Fixa',
+                        category: bill.category || 'Outros',
+                        cardId: bill.cardId || null,
+                        desc: bill.desc || '',
+                        amount: bill.amount,
+                        installments: 1,
+                        isRecurring: true,
+                        profile: bill.profile || (typeof currentProfile !== 'undefined' ? currentProfile : 'personal')
+                    });
+                    hasChanges = true;
+                }
+            });
+        });
+
+        if (hasChanges) {
+            localStorage.setItem('profinance_app_data', JSON.stringify(transactions));
+        }
+    }
+    window.syncRecurringBillsAcrossMonths = syncRecurringBillsAcrossMonths;
+
     // --- ATUALIZAÇÃO DO DASHBOARD E TABELA ---
     function updateDashboard(refreshCharts = true) {
         if (!isAuthorizedSession()) return;
+        if (typeof syncRecurringBillsAcrossMonths === 'function') {
+            syncRecurringBillsAcrossMonths();
+        }
         const tableBody = document.getElementById('table-body');
         const filterInput = document.getElementById('month-filter');
         
