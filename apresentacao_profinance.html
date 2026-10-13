@@ -2,792 +2,1615 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <title>ProFinance - Apresentação Comercial MB Tech</title>
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@600;700;800&display=swap');
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ProFinance - Sistema de Inteligência Financeira | MB Tech</title>
+    
+    <!-- Meta tags para prévia rica no WhatsApp e Redes Sociais -->
+    <meta name="description" content="Domine o seu dinheiro. Controle de gastos, cartões de crédito, contas fixas e inteligência financeira para você e seu negócio. Direto no celular e computador.">
+    <meta property="og:title" content="ProFinance - Inteligência Financeira e Controle de Gastos">
+    <meta property="og:description" content="Plataforma definitiva desenvolvida pela MB Tech para autônomos, MEIs e gestão financeira pessoal. Comece a economizar hoje mesmo.">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://profinance-nine.vercel.app/apresentacao_profinance.html">
 
-        @page {
-            size: A4 portrait;
-            margin: 0;
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800;900&family=Space+Grotesk:wght@600;700;800&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --bg-base: #060911;
+            --bg-surface: #0B111E;
+            --bg-card: rgba(15, 23, 42, 0.75);
+            --bg-card-hover: rgba(30, 41, 59, 0.85);
+            --border-subtle: rgba(255, 255, 255, 0.08);
+            --border-highlight: rgba(56, 189, 248, 0.35);
+            --text-main: #F8FAFC;
+            --text-muted: #94A3B8;
+            --text-dim: #64748B;
+            --primary: #38BDF8;
+            --primary-glow: rgba(56, 189, 248, 0.25);
+            --accent-green: #10B981;
+            --accent-green-glow: rgba(16, 185, 129, 0.25);
+            --accent-red: #EF4444;
+            --gradient-brand: linear-gradient(135deg, #38BDF8 0%, #3B82F6 50%, #60A5FA 100%);
+            --gradient-green: linear-gradient(135deg, #10B981 0%, #059669 100%);
+            --font-main: 'Plus Jakarta Sans', sans-serif;
+            --font-display: 'Space Grotesk', sans-serif;
         }
 
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
-            font-family: 'Plus Jakarta Sans', sans-serif;
-            -webkit-print-color-adjust: exact;
-            print-color-adjust: exact;
+            font-family: var(--font-main);
+            scroll-behavior: smooth;
         }
 
         body {
-            background-color: #070B12;
-            color: #F1F5F9;
+            background-color: var(--bg-base);
+            color: var(--text-main);
             min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            padding: 24px 16px 60px 16px;
+            overflow-x: hidden;
+            line-height: 1.6;
+            background-image: 
+                radial-gradient(circle at 50% 0%, rgba(56, 189, 248, 0.12) 0%, transparent 60%),
+                radial-gradient(circle at 100% 50%, rgba(59, 130, 246, 0.06) 0%, transparent 50%),
+                radial-gradient(circle at 0% 80%, rgba(16, 185, 129, 0.05) 0%, transparent 50%);
+            background-attachment: fixed;
         }
 
-        /* Topo Comercial Flutuante / Header de Ações Rápidas */
-        .presentation-topbar {
-            width: 100%;
-            max-width: 960px;
+        /* --- NAVBAR FIXA MODERNA --- */
+        .navbar {
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            background: rgba(6, 9, 17, 0.85);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border-bottom: 1px solid var(--border-subtle);
+            padding: 14px 24px;
+            transition: all 0.3s ease;
+        }
+
+        .nav-container {
+            max-width: 1200px;
+            margin: 0 auto;
             display: flex;
-            justify-content: space-between;
             align-items: center;
-            background: rgba(15, 23, 42, 0.9);
-            backdrop-filter: blur(12px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 16px;
-            padding: 12px 20px;
-            margin-bottom: 24px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
-            flex-wrap: wrap;
+            justify-content: space-between;
+            gap: 20px;
+        }
+
+        .brand-logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            text-decoration: none;
+            color: inherit;
+        }
+
+        .logo-icon {
+            width: 42px;
+            height: 42px;
+            background: linear-gradient(135deg, #1E293B 0%, #0A0E17 100%);
+            border: 1px solid rgba(56, 189, 248, 0.3);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4), 0 0 15px rgba(56, 189, 248, 0.15);
+        }
+
+        .logo-text {
+            font-size: 1.35rem;
+            font-weight: 900;
+            letter-spacing: -0.5px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .logo-text span.pro {
+            color: #FFFFFF;
+        }
+
+        .logo-text span.finance {
+            background: var(--gradient-brand);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .badge-mbtech {
+            font-size: 0.7rem;
+            background: rgba(56, 189, 248, 0.12);
+            color: var(--primary);
+            border: 1px solid rgba(56, 189, 248, 0.3);
+            padding: 2px 8px;
+            border-radius: 999px;
+            font-weight: 800;
+            letter-spacing: 0.5px;
+        }
+
+        .nav-links {
+            display: flex;
+            align-items: center;
+            gap: 24px;
+            list-style: none;
+        }
+
+        .nav-links a {
+            color: var(--text-muted);
+            text-decoration: none;
+            font-size: 0.92rem;
+            font-weight: 600;
+            transition: color 0.2s ease;
+        }
+
+        .nav-links a:hover {
+            color: var(--primary);
+        }
+
+        .nav-actions {
+            display: flex;
+            align-items: center;
             gap: 12px;
         }
 
-        .topbar-brand {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            font-weight: 800;
-            font-size: 1.1rem;
-            color: #FFFFFF;
-        }
-
-        .topbar-actions {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            flex-wrap: wrap;
-        }
-
-        .btn-topbar-wa {
+        .btn-outline-print {
             display: inline-flex;
             align-items: center;
             gap: 6px;
-            background: linear-gradient(135deg, #10B981 0%, #059669 100%);
-            color: #FFFFFF;
+            background: transparent;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            color: var(--text-muted);
+            padding: 8px 14px;
+            border-radius: 10px;
+            font-size: 0.82rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
             text-decoration: none;
-            padding: 8px 18px;
-            border-radius: 999px;
-            font-weight: 700;
-            font-size: 0.85rem;
-            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
-            transition: transform 0.15s ease;
-        }
-        .btn-topbar-wa:hover {
-            transform: translateY(-1px);
         }
 
-        .btn-topbar-app {
+        .btn-outline-print:hover {
+            background: rgba(255, 255, 255, 0.05);
+            color: #FFFFFF;
+            border-color: rgba(255, 255, 255, 0.3);
+        }
+
+        .btn-nav-app {
             display: inline-flex;
             align-items: center;
             gap: 6px;
             background: #1E293B;
             border: 1px solid #334155;
             color: #93C5FD;
+            padding: 9px 18px;
+            border-radius: 10px;
+            font-size: 0.88rem;
+            font-weight: 700;
             text-decoration: none;
-            padding: 8px 18px;
-            border-radius: 999px;
-            font-weight: 600;
-            font-size: 0.85rem;
+            transition: all 0.2s ease;
         }
 
-        .page {
-            width: 100%;
-            max-width: 960px;
-            min-height: auto;
-            margin: 0 auto 36px auto;
-            padding: 36px 42px;
-            background: radial-gradient(circle at 80% 15%, rgba(56, 189, 248, 0.12) 0%, #0B111E 65%);
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            border-radius: 24px;
-            box-shadow: 0 25px 60px rgba(0, 0, 0, 0.8), 0 0 40px rgba(56, 189, 248, 0.08);
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
+        .btn-nav-app:hover {
+            background: #253349;
+            color: #FFFFFF;
+            border-color: #475569;
+        }
+
+        .btn-nav-wa {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: var(--gradient-green);
+            color: #FFFFFF;
+            padding: 9px 20px;
+            border-radius: 10px;
+            font-size: 0.88rem;
+            font-weight: 700;
+            text-decoration: none;
+            box-shadow: 0 4px 15px rgba(16, 185, 129, 0.35);
+            transition: all 0.2s ease;
+        }
+
+        .btn-nav-wa:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 22px rgba(16, 185, 129, 0.5);
+        }
+
+        /* --- CONTAINER PRINCIPAL --- */
+        .main-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 24px;
+        }
+
+        /* --- HERO SECTION --- */
+        .hero-section {
+            padding: 70px 0 50px 0;
+            text-align: center;
             position: relative;
         }
 
-        @media (max-width: 768px) {
-            body {
-                padding: 12px 8px;
-            }
-            .presentation-topbar {
-                flex-direction: column;
-                align-items: stretch;
-                text-align: center;
-            }
-            .topbar-actions {
-                justify-content: center;
-            }
-            .page {
-                padding: 24px 18px;
-                border-radius: 16px;
-                margin-bottom: 20px;
-            }
-            .grid-2, .features-grid, .pricing-grid {
-                grid-template-columns: 1fr !important;
-            }
-            .highlight-banner {
-                flex-direction: column;
-                text-align: center;
-            }
-            .system-main-name {
-                font-size: 34pt;
-            }
-            .cover-title {
-                font-size: 20pt;
-            }
-        }
-
-        @media print {
-            body {
-                padding: 0;
-                background: #070B12;
-                display: block;
-            }
-            .no-print {
-                display: none !important;
-            }
-            .page {
-                width: 210mm;
-                min-height: 297mm;
-                height: 297mm;
-                margin: 0;
-                padding: 18mm 18mm;
-                border: none;
-                border-radius: 0;
-                box-shadow: none;
-                page-break-after: always;
-                overflow: hidden;
-            }
-        }
-
-        /* --- PÁGINA 1: CAPA --- */
-        .cover-content {
-            display: flex;
-            flex-direction: column;
+        .hero-badge {
+            display: inline-flex;
             align-items: center;
-            text-align: center;
-            margin-top: 15mm;
-            gap: 5mm;
+            gap: 8px;
+            background: rgba(56, 189, 248, 0.1);
+            border: 1px solid rgba(56, 189, 248, 0.3);
+            color: var(--primary);
+            padding: 6px 16px;
+            border-radius: 999px;
+            font-size: 0.85rem;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            margin-bottom: 24px;
+            box-shadow: 0 0 25px rgba(56, 189, 248, 0.15);
         }
 
-        .cover-logo-box {
-            width: 85px;
-            height: 85px;
-            background: linear-gradient(135deg, #1E293B 0%, #0A0E17 100%);
-            border: 2px solid rgba(255, 255, 255, 0.15);
-            border-radius: 22px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.7), 0 0 35px rgba(56, 189, 248, 0.25);
-            margin-bottom: 2mm;
+        .hero-badge .pulse-dot {
+            width: 8px;
+            height: 8px;
+            background: #10B981;
+            border-radius: 50%;
+            box-shadow: 0 0 10px #10B981;
+            animation: pulseDot 2s infinite;
         }
 
-        /* NOME DO SISTEMA GIGANTE E DESTACADO */
-        .system-main-name {
-            font-size: 46pt;
+        @keyframes pulseDot {
+            0% { transform: scale(0.9); opacity: 0.8; }
+            50% { transform: scale(1.3); opacity: 1; }
+            100% { transform: scale(0.9); opacity: 0.8; }
+        }
+
+        .hero-title {
+            font-size: clamp(2.3rem, 5vw, 3.8rem);
             font-weight: 900;
-            line-height: 1;
+            line-height: 1.15;
             letter-spacing: -1.5px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            text-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
-        }
-
-        .brand-pro {
+            margin-bottom: 22px;
             color: #FFFFFF;
         }
 
-        .brand-finance {
-            background: linear-gradient(135deg, #38BDF8 0%, #3B82F6 60%, #60A5FA 100%);
+        .hero-title span.highlight {
+            background: var(--gradient-brand);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
         }
 
-        .brand-badge {
-            background: rgba(56, 189, 248, 0.12);
-            border: 1px solid rgba(56, 189, 248, 0.35);
-            color: #38BDF8;
-            padding: 5px 16px;
-            border-radius: 999px;
-            font-size: 10pt;
-            font-weight: 800;
-            letter-spacing: 1.2px;
-            text-transform: uppercase;
+        .hero-subtitle {
+            font-size: clamp(1.05rem, 2vw, 1.25rem);
+            color: var(--text-muted);
+            max-width: 780px;
+            margin: 0 auto 34px auto;
+            line-height: 1.6;
+            font-weight: 400;
         }
 
-        .cover-title {
-            font-size: 26pt;
-            font-weight: 800;
-            line-height: 1.2;
-            letter-spacing: -0.5px;
-            color: #E2E8F0;
-            margin-top: 2mm;
-        }
-
-        .cover-title span {
-            background: linear-gradient(135deg, #FFFFFF 0%, #CBD5E1 50%, #94A3B8 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
-
-        .cover-subtitle {
-            font-size: 13.5pt;
-            color: #94A3B8;
-            max-width: 155mm;
-            line-height: 1.5;
-            font-weight: 500;
-        }
-
-        .cover-cards-preview {
+        .hero-cta-group {
             display: flex;
-            gap: 10px;
-            margin-top: 3mm;
-            flex-wrap: wrap;
+            align-items: center;
             justify-content: center;
+            gap: 16px;
+            flex-wrap: wrap;
+            margin-bottom: 45px;
         }
 
-        .preview-pill {
-            background: #0F172A;
-            border: 1px solid #1E293B;
-            padding: 8px 14px;
-            border-radius: 12px;
-            font-size: 9.5pt;
+        .btn-hero-primary {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            background: var(--gradient-green);
+            color: #FFFFFF;
+            padding: 16px 36px;
+            border-radius: 14px;
+            font-size: 1.05rem;
+            font-weight: 800;
+            text-decoration: none;
+            box-shadow: 0 10px 30px rgba(16, 185, 129, 0.4);
+            transition: all 0.25s ease;
+        }
+
+        .btn-hero-primary:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 15px 40px rgba(16, 185, 129, 0.6);
+        }
+
+        .btn-hero-secondary {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            background: rgba(30, 41, 59, 0.7);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            color: #F8FAFC;
+            padding: 16px 32px;
+            border-radius: 14px;
+            font-size: 1.05rem;
+            font-weight: 700;
+            text-decoration: none;
+            backdrop-filter: blur(10px);
+            transition: all 0.25s ease;
+        }
+
+        .btn-hero-secondary:hover {
+            background: rgba(51, 65, 85, 0.9);
+            border-color: rgba(255, 255, 255, 0.3);
+            transform: translateY(-2px);
+        }
+
+        .hero-trust-badges {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 24px;
+            flex-wrap: wrap;
+            margin-bottom: 50px;
+        }
+
+        .trust-badge-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.85rem;
             font-weight: 600;
-            color: #E2E8F0;
+            color: #CBD5E1;
+            background: rgba(15, 23, 42, 0.6);
+            padding: 6px 14px;
+            border-radius: 999px;
+            border: 1px solid var(--border-subtle);
+        }
+
+        /* --- DASHBOARD MOCKUP PREVIEW INTERATIVO --- */
+        .mockup-wrapper {
+            max-width: 1080px;
+            margin: 0 auto 80px auto;
+            position: relative;
+        }
+
+        .mockup-glow {
+            position: absolute;
+            inset: -15px;
+            background: radial-gradient(circle at 50% 30%, rgba(56, 189, 248, 0.3) 0%, rgba(16, 185, 129, 0.15) 40%, transparent 70%);
+            filter: blur(40px);
+            z-index: 0;
+            opacity: 0.7;
+            pointer-events: none;
+        }
+
+        .mockup-window {
+            position: relative;
+            z-index: 1;
+            background: #0B111E;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 30px 80px rgba(0, 0, 0, 0.8), 0 0 50px rgba(56, 189, 248, 0.15);
+        }
+
+        .mockup-header {
+            background: #0F172A;
+            border-bottom: 1px solid var(--border-subtle);
+            padding: 12px 18px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .mockup-dots {
+            display: flex;
+            gap: 6px;
+        }
+
+        .mockup-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+        }
+
+        .mockup-dot.red { background: #EF4444; }
+        .mockup-dot.yellow { background: #F59E0B; }
+        .mockup-dot.green { background: #10B981; }
+
+        .mockup-url {
+            background: #080C14;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            padding: 4px 18px;
+            border-radius: 8px;
+            font-size: 0.75rem;
+            color: #64748B;
             display: flex;
             align-items: center;
             gap: 6px;
         }
 
-        .cover-footer {
-            border-top: 1px solid #1E293B;
-            padding-top: 5mm;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            font-size: 8.5pt;
-            color: #64748B;
-        }
-
-        /* --- PÁGINA 2: PROBLEMA & SOLUÇÃO --- */
-        .section-header {
+        .mockup-body {
+            padding: 24px;
             display: flex;
             flex-direction: column;
-            gap: 3px;
-            margin-bottom: 5mm;
+            gap: 20px;
+        }
+
+        .mockup-grid-kpis {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+            gap: 16px;
+        }
+
+        .mockup-kpi {
+            background: rgba(15, 23, 42, 0.8);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 14px;
+            padding: 18px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .mockup-kpi::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 2px;
+            background: var(--gradient-brand);
+            opacity: 0.5;
+        }
+
+        .mockup-kpi-label {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            font-weight: 600;
+            margin-bottom: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .mockup-kpi-val {
+            font-size: 1.45rem;
+            font-weight: 800;
+            font-family: var(--font-display);
+            color: #FFFFFF;
+        }
+
+        .mockup-kpi-badge {
+            font-size: 0.7rem;
+            padding: 2px 6px;
+            border-radius: 6px;
+            font-weight: 700;
+        }
+
+        .mockup-kpi-badge.up { background: rgba(16, 185, 129, 0.15); color: #10B981; }
+        .mockup-kpi-badge.down { background: rgba(239, 68, 68, 0.15); color: #EF4444; }
+
+        .mockup-middle-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+        }
+
+        .mockup-card-black {
+            background: linear-gradient(135deg, #1E293B 0%, #0F172A 100%);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            min-height: 180px;
+            position: relative;
+        }
+
+        .mockup-card-black .chip {
+            width: 32px;
+            height: 24px;
+            background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%);
+            border-radius: 6px;
+        }
+
+        .mockup-chart-box {
+            background: rgba(15, 23, 42, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 16px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .mockup-bar-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 0.78rem;
+            margin-bottom: 8px;
+        }
+
+        .mockup-bar-track {
+            flex: 1;
+            height: 8px;
+            background: #1E293B;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .mockup-bar-fill {
+            height: 100%;
+            border-radius: 4px;
+        }
+
+        /* --- SEÇÃO PROBLEMA VS SOLUÇÃO --- */
+        .section-padding {
+            padding: 70px 0;
+        }
+
+        .section-header {
+            text-align: center;
+            max-width: 720px;
+            margin: 0 auto 50px auto;
         }
 
         .section-tag {
-            color: #38BDF8;
-            font-size: 8.5pt;
+            color: var(--primary);
+            font-size: 0.82rem;
             font-weight: 800;
             text-transform: uppercase;
-            letter-spacing: 1px;
+            letter-spacing: 1.5px;
+            margin-bottom: 10px;
+            display: inline-block;
         }
 
         .section-title {
-            font-size: 22pt;
+            font-size: clamp(1.8rem, 3.5vw, 2.6rem);
             font-weight: 800;
             color: #FFFFFF;
             letter-spacing: -0.5px;
+            line-height: 1.25;
+            margin-bottom: 14px;
         }
 
-        .grid-2 {
+        .section-desc {
+            color: var(--text-muted);
+            font-size: 1.05rem;
+        }
+
+        .comparison-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 5mm;
-            margin-bottom: 5mm;
+            gap: 24px;
+            margin-bottom: 35px;
         }
 
-        .card-problem {
-            background: rgba(239, 68, 68, 0.05);
-            border: 1px solid rgba(239, 68, 68, 0.25);
-            border-radius: 16px;
-            padding: 5mm;
+        .card-comparison {
+            border-radius: 20px;
+            padding: 32px 28px;
             display: flex;
             flex-direction: column;
-            gap: 3.5mm;
+            gap: 20px;
         }
 
-        .card-solution {
-            background: rgba(16, 185, 129, 0.05);
+        .card-comparison.problem {
+            background: rgba(239, 68, 68, 0.03);
+            border: 1px solid rgba(239, 68, 68, 0.2);
+        }
+
+        .card-comparison.solution {
+            background: rgba(16, 185, 129, 0.03);
             border: 1px solid rgba(16, 185, 129, 0.25);
-            border-radius: 16px;
-            padding: 5mm;
-            display: flex;
-            flex-direction: column;
-            gap: 3.5mm;
+            box-shadow: 0 10px 30px rgba(16, 185, 129, 0.06);
         }
 
-        .card-box-title {
-            font-size: 12pt;
+        .comp-title {
+            font-size: 1.35rem;
             font-weight: 800;
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: 10px;
         }
 
-        .list-items {
-            display: flex;
-            flex-direction: column;
-            gap: 3mm;
-            font-size: 9pt;
-            line-height: 1.4;
-            color: #CBD5E1;
-        }
-
-        .list-items li {
+        .comp-list {
             list-style: none;
             display: flex;
-            align-items: flex-start;
-            gap: 8px;
+            flex-direction: column;
+            gap: 16px;
         }
 
-        .highlight-banner {
-            background: linear-gradient(135deg, #1E293B 0%, #0F172A 100%);
-            border: 1px solid #334155;
-            border-radius: 16px;
-            padding: 5mm 7mm;
+        .comp-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            font-size: 0.95rem;
+            color: #CBD5E1;
+            line-height: 1.5;
+        }
+
+        .stat-banner {
+            background: linear-gradient(135deg, rgba(30, 41, 59, 0.7) 0%, rgba(15, 23, 42, 0.9) 100%);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: 20px;
+            padding: 30px 36px;
             display: flex;
             align-items: center;
             justify-content: space-between;
-            gap: 6mm;
+            gap: 24px;
+            flex-wrap: wrap;
         }
 
-        .banner-stat {
-            text-align: center;
-        }
-
-        .banner-stat-number {
-            font-size: 24pt;
-            font-weight: 800;
+        .stat-value {
+            font-size: 2.6rem;
+            font-weight: 900;
             color: #10B981;
-            font-family: 'Space Grotesk', sans-serif;
+            font-family: var(--font-display);
+            line-height: 1;
         }
 
-        .banner-stat-desc {
-            font-size: 8pt;
-            color: #94A3B8;
-            font-weight: 600;
-        }
-
-        /* --- PÁGINA 3: RECURSOS EXCLUSIVOS --- */
+        /* --- GRID DE RECURSOS / FEATURES --- */
         .features-grid {
             display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 4.5mm;
-            margin-bottom: 5mm;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 24px;
+            margin-top: 30px;
         }
 
         .feature-card {
-            background: #0F172A;
-            border: 1px solid #1E293B;
-            border-radius: 14px;
-            padding: 4.5mm;
+            background: var(--bg-card);
+            border: 1px solid var(--border-subtle);
+            border-radius: 20px;
+            padding: 32px 28px;
             display: flex;
             flex-direction: column;
-            gap: 2.5mm;
+            gap: 14px;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
         }
 
-        .feature-icon {
-            font-size: 18pt;
+        .feature-card:hover {
+            transform: translateY(-5px);
+            border-color: var(--border-highlight);
+            background: var(--bg-card-hover);
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.5), 0 0 25px rgba(56, 189, 248, 0.1);
         }
 
-        .feature-name {
-            font-size: 11.5pt;
-            font-weight: 700;
+        .feature-icon-wrapper {
+            width: 52px;
+            height: 52px;
+            background: rgba(56, 189, 248, 0.1);
+            border: 1px solid rgba(56, 189, 248, 0.25);
+            border-radius: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.6rem;
+            margin-bottom: 4px;
+        }
+
+        .feature-title {
+            font-size: 1.22rem;
+            font-weight: 800;
             color: #FFFFFF;
         }
 
         .feature-desc {
-            font-size: 8.2pt;
-            color: #94A3B8;
-            line-height: 1.45;
+            font-size: 0.92rem;
+            color: var(--text-muted);
+            line-height: 1.6;
         }
 
-        /* --- PÁGINA 4: PLANOS & CTA --- */
+        /* --- PLANOS & PREÇOS --- */
+        .pricing-section {
+            padding: 80px 0 60px 0;
+        }
+
         .pricing-grid {
             display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 5mm;
-            margin-top: 3mm;
-            margin-bottom: 5mm;
+            grid-template-columns: 1fr 1.15fr;
+            gap: 28px;
+            max-width: 940px;
+            margin: 0 auto 50px auto;
+            align-items: stretch;
         }
 
         .pricing-card {
-            background: #0F172A;
-            border: 1px solid #1E293B;
-            border-radius: 16px;
-            padding: 6mm;
+            background: var(--bg-card);
+            border: 1px solid var(--border-subtle);
+            border-radius: 24px;
+            padding: 40px 32px;
             display: flex;
             flex-direction: column;
             justify-content: space-between;
             position: relative;
+            transition: all 0.3s ease;
         }
 
-        .pricing-card.vip {
-            border: 2px solid #3B82F6;
-            background: linear-gradient(180deg, rgba(59, 130, 246, 0.12) 0%, #0F172A 100%);
-            box-shadow: 0 15px 35px rgba(59, 130, 246, 0.25);
+        .pricing-card.featured {
+            background: linear-gradient(180deg, rgba(56, 189, 248, 0.12) 0%, rgba(15, 23, 42, 0.95) 100%);
+            border: 2px solid var(--primary);
+            box-shadow: 0 20px 50px rgba(56, 189, 248, 0.25);
+            transform: scale(1.02);
         }
 
         .badge-recommended {
             position: absolute;
-            top: -11px;
-            right: 18px;
-            background: linear-gradient(135deg, #3B82F6 0%, #1D4ED8 100%);
+            top: -14px;
+            right: 28px;
+            background: var(--gradient-brand);
             color: #FFFFFF;
-            padding: 3px 12px;
+            padding: 4px 16px;
             border-radius: 999px;
-            font-size: 7.5pt;
+            font-size: 0.75rem;
             font-weight: 800;
             text-transform: uppercase;
-            letter-spacing: 0.5px;
+            letter-spacing: 0.8px;
+            box-shadow: 0 4px 15px rgba(56, 189, 248, 0.4);
         }
 
-        .plan-name {
-            font-size: 13pt;
+        .plan-header {
+            margin-bottom: 24px;
+        }
+
+        .plan-title {
+            font-size: 1.4rem;
             font-weight: 800;
             color: #FFFFFF;
+            margin-bottom: 8px;
         }
 
         .plan-price {
-            font-size: 26pt;
-            font-weight: 800;
+            font-size: 3rem;
+            font-weight: 900;
+            font-family: var(--font-display);
             color: #FFFFFF;
-            font-family: 'Space Grotesk', sans-serif;
-            margin: 2mm 0;
+            line-height: 1;
+            margin: 16px 0 8px 0;
         }
 
-        .plan-price span {
-            font-size: 10pt;
-            color: #94A3B8;
+        .plan-price span.period {
+            font-size: 1rem;
+            color: var(--text-muted);
             font-weight: 500;
         }
 
-        .plan-features {
+        .plan-economy {
+            font-size: 0.85rem;
+            color: #10B981;
+            font-weight: 700;
+        }
+
+        .plan-features-list {
+            list-style: none;
             display: flex;
             flex-direction: column;
-            gap: 2mm;
-            margin: 3mm 0;
-            font-size: 8.2pt;
+            gap: 12px;
+            margin: 28px 0 34px 0;
+            font-size: 0.92rem;
             color: #CBD5E1;
         }
 
-        .cta-box {
-            background: linear-gradient(135deg, #0A2540 0%, #081225 100%);
-            border: 2px solid #2563EB;
-            border-radius: 16px;
-            padding: 5mm 7mm;
-            text-align: center;
+        .plan-features-list li {
             display: flex;
-            flex-direction: column;
             align-items: center;
-            gap: 2.5mm;
+            gap: 10px;
         }
 
-        .cta-title {
-            font-size: 13pt;
+        .plan-features-list li svg {
+            color: #10B981;
+            flex-shrink: 0;
+        }
+
+        .btn-plan-action {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            width: 100%;
+            padding: 16px 20px;
+            border-radius: 12px;
+            font-size: 1rem;
             font-weight: 800;
+            text-decoration: none;
+            transition: all 0.25s ease;
+        }
+
+        .btn-plan-action.primary {
+            background: var(--gradient-green);
+            color: #FFFFFF;
+            box-shadow: 0 8px 25px rgba(16, 185, 129, 0.4);
+        }
+
+        .btn-plan-action.primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 30px rgba(16, 185, 129, 0.6);
+        }
+
+        .btn-plan-action.secondary {
+            background: #1E293B;
+            border: 1px solid #334155;
+            color: #93C5FD;
+        }
+
+        .btn-plan-action.secondary:hover {
+            background: #253349;
             color: #FFFFFF;
         }
 
-        .cta-pix {
-            background: rgba(16, 185, 129, 0.15);
-            border: 1px dashed #10B981;
-            padding: 4px 14px;
-            border-radius: 8px;
-            font-size: 9.5pt;
-            font-weight: 700;
-            color: #34D399;
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
+        /* --- PIX & CHECKOUT CALL TO ACTION --- */
+        .pix-box {
+            background: linear-gradient(135deg, rgba(15, 23, 42, 0.9) 0%, rgba(11, 17, 30, 0.95) 100%);
+            border: 1px solid rgba(56, 189, 248, 0.3);
+            border-radius: 20px;
+            padding: 36px 30px;
+            text-align: center;
+            max-width: 820px;
+            margin: 0 auto;
+            box-shadow: 0 20px 45px rgba(0, 0, 0, 0.6);
         }
 
-        .cta-link {
-            font-size: 8.5pt;
-            color: #93C5FD;
+        .pix-key-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 12px;
+            background: rgba(16, 185, 129, 0.12);
+            border: 1px dashed rgba(16, 185, 129, 0.4);
+            padding: 10px 22px;
+            border-radius: 12px;
+            font-size: 1.05rem;
+            font-weight: 700;
+            color: #34D399;
+            margin: 18px 0;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .pix-key-pill:hover {
+            background: rgba(16, 185, 129, 0.2);
+            border-color: #10B981;
+        }
+
+        /* --- FAQ ACCORDION --- */
+        .faq-section {
+            padding: 60px 0 80px 0;
+        }
+
+        .faq-list {
+            max-width: 820px;
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+
+        .faq-item {
+            background: var(--bg-card);
+            border: 1px solid var(--border-subtle);
+            border-radius: 16px;
+            overflow: hidden;
+            transition: all 0.2s ease;
+        }
+
+        .faq-item.active {
+            border-color: var(--border-highlight);
+        }
+
+        .faq-question {
+            padding: 20px 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            cursor: pointer;
+            font-weight: 700;
+            font-size: 1.05rem;
+            color: #FFFFFF;
+            user-select: none;
+        }
+
+        .faq-chevron {
+            transition: transform 0.3s ease;
+        }
+
+        .faq-item.active .faq-chevron {
+            transform: rotate(180deg);
+        }
+
+        .faq-answer {
+            padding: 0 24px 20px 24px;
+            color: var(--text-muted);
+            font-size: 0.95rem;
+            line-height: 1.6;
+            display: none;
+        }
+
+        .faq-item.active .faq-answer {
+            display: block;
+        }
+
+        /* --- FOOTER INSTITUCIONAL --- */
+        .footer {
+            border-top: 1px solid var(--border-subtle);
+            padding: 50px 24px 40px 24px;
+            background: rgba(6, 9, 17, 0.95);
+            text-align: center;
+        }
+
+        .footer-content {
+            max-width: 900px;
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 16px;
+        }
+
+        /* --- BOTÃO FLUTUANTE DE WHATSAPP --- */
+        .floating-wa-btn {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            z-index: 999;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: var(--gradient-green);
+            color: #FFFFFF;
             text-decoration: none;
-            font-weight: 600;
+            padding: 12px 22px;
+            border-radius: 999px;
+            font-weight: 800;
+            font-size: 0.95rem;
+            box-shadow: 0 10px 30px rgba(16, 185, 129, 0.5);
+            transition: all 0.3s ease;
+            animation: pulseBtn 3s infinite;
+        }
+
+        .floating-wa-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 12px 35px rgba(16, 185, 129, 0.7);
+        }
+
+        @keyframes pulseBtn {
+            0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.6); }
+            70% { box-shadow: 0 0 0 16px rgba(16, 185, 129, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+        }
+
+        /* --- RESPONSIVIDADE MOBILE --- */
+        @media (max-width: 868px) {
+            .nav-links {
+                display: none;
+            }
+            .pricing-grid {
+                grid-template-columns: 1fr;
+            }
+            .pricing-card.featured {
+                transform: none;
+            }
+            .comparison-grid {
+                grid-template-columns: 1fr;
+            }
+            .mockup-middle-grid {
+                grid-template-columns: 1fr;
+            }
+            .stat-banner {
+                flex-direction: column;
+                text-align: center;
+            }
+            .floating-wa-btn span {
+                display: none;
+            }
+            .floating-wa-btn {
+                padding: 14px;
+                border-radius: 50%;
+            }
+        }
+
+        /* --- REGRAS DE IMPRESSÃO / PDF LIMPO --- */
+        @media print {
+            .navbar, .floating-wa-btn, .btn-outline-print {
+                display: none !important;
+            }
+            body {
+                background: #FFFFFF !important;
+                color: #0F172A !important;
+            }
+            .hero-title, .section-title, .feature-title, .plan-title {
+                color: #0F172A !important;
+            }
+            .mockup-window, .feature-card, .pricing-card, .pix-box {
+                background: #FFFFFF !important;
+                border: 1px solid #CBD5E1 !important;
+                box-shadow: none !important;
+                color: #0F172A !important;
+            }
+            .hero-subtitle, .feature-desc, .plan-features-list, .section-desc {
+                color: #475569 !important;
+            }
         }
     </style>
 </head>
 <body>
 
-    <!-- BARRA SUPERIOR DE AÇÕES RÁPIDAS (DESKTOP / MOBILE) -->
-    <header class="presentation-topbar no-print">
-        <div class="topbar-brand">
-            <span style="color: #FFFFFF; font-weight: 900;">Pro</span><span style="color: #38BDF8; font-weight: 800;">Finance</span>
-            <span style="font-size: 0.72rem; background: rgba(56, 189, 248, 0.15); color: #38BDF8; padding: 2px 8px; border-radius: 999px; font-weight: 700;">MB TECH</span>
-        </div>
-        <div class="topbar-actions">
-            <a href="https://api.whatsapp.com/send?phone=5569992816598&text=Ol%C3%A1%21%20Gostaria%20de%20adquirir%20minha%20chave%20de%20acesso%20ao%20ProFinance." target="_blank" class="btn-topbar-wa">
-                💬 Comprar no WhatsApp (69 99281-6598)
+    <!-- NAVBAR FIXA -->
+    <header class="navbar">
+        <div class="nav-container">
+            <a href="apresentacao_profinance.html" class="brand-logo">
+                <div class="logo-icon">
+                    <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" style="width: 26px; height: 26px;">
+                        <path d="M32 9L10 22H54L32 9Z" fill="#38BDF8"/>
+                        <rect x="8" y="22" width="48" height="4.5" fill="#93C5FD"/>
+                        <rect x="12" y="26.5" width="6" height="16" fill="#FFFFFF"/>
+                        <rect x="23" y="26.5" width="6" height="16" fill="#FFFFFF"/>
+                        <rect x="35" y="26.5" width="6" height="16" fill="#FFFFFF"/>
+                        <rect x="46" y="26.5" width="6" height="16" fill="#FFFFFF"/>
+                        <rect x="8" y="42.5" width="48" height="4" fill="#93C5FD"/>
+                        <rect x="5" y="46.5" width="54" height="4.5" fill="#38BDF8"/>
+                    </svg>
+                </div>
+                <div class="logo-text">
+                    <span class="pro">Pro</span><span class="finance">Finance</span>
+                    <span class="badge-mbtech">MB TECH</span>
+                </div>
             </a>
-            <a href="https://profinance-nine.vercel.app" target="_blank" class="btn-topbar-app">
-                🌐 Entrar no Sistema
-            </a>
+
+            <nav>
+                <ul class="nav-links">
+                    <li><a href="#recursos">Recursos</a></li>
+                    <li><a href="#demonstracao">Demonstração</a></li>
+                    <li><a href="#planos">Planos & Preços</a></li>
+                    <li><a href="#faq">Dúvidas (FAQ)</a></li>
+                </ul>
+            </nav>
+
+            <div class="nav-actions">
+                <button type="button" class="btn-outline-print" onclick="window.print()" title="Imprimir Apresentação Comercial em PDF">
+                    🖨️ PDF
+                </button>
+                <a href="https://profinance-nine.vercel.app/" class="btn-nav-app">
+                    🌐 Entrar no Sistema
+                </a>
+                <a href="https://api.whatsapp.com/send?phone=5569992816598&text=Ol%C3%A1%21%20Gostaria%20de%20adquirir%20minha%20chave%20de%20acesso%20ao%20ProFinance." target="_blank" class="btn-nav-wa">
+                    💬 Adquirir no WhatsApp
+                </a>
+            </div>
         </div>
     </header>
 
-    <!-- PÁGINA 1: CAPA -->
-    <div class="page">
-        <div style="display: flex; justify-content: space-between; align-items: center;">
-            <div style="display: flex; align-items: center; gap: 6px;">
-                <span style="font-weight: 900; font-size: 13pt; letter-spacing: 1.5px; color: #FFFFFF;">MB TECH</span>
-                <span style="font-size: 8pt; background: #1E293B; padding: 2px 6px; border-radius: 4px; color: #94A3B8; font-weight: 700;">SOFTWARE HOUSE</span>
-            </div>
-            <span style="font-size: 8.5pt; color: #64748B; font-weight: 600;">CNPJ: 69.234.012/0001-87</span>
-        </div>
+    <div class="main-container">
 
-        <div class="cover-content">
-            <!-- Ícone Institucional do Banco -->
-            <div class="cover-logo-box">
-                <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" style="width: 50px; height: 50px;">
-                    <path d="M32 9L10 22H54L32 9Z" fill="#F1F5F9" stroke="#FFFFFF" stroke-width="1.5" stroke-linejoin="round"/>
-                    <rect x="8" y="22" width="48" height="4.5" fill="#CBD5E1"/>
-                    <rect x="12" y="26.5" width="6" height="16" fill="#FFFFFF"/>
-                    <rect x="23" y="26.5" width="6" height="16" fill="#FFFFFF"/>
-                    <rect x="35" y="26.5" width="6" height="16" fill="#FFFFFF"/>
-                    <rect x="46" y="26.5" width="6" height="16" fill="#FFFFFF"/>
-                    <rect x="8" y="42.5" width="48" height="4" fill="#CBD5E1"/>
-                    <rect x="5" y="46.5" width="54" height="4.5" fill="#94A3B8"/>
-                </svg>
+        <!-- HERO SECTION -->
+        <section class="hero-section">
+            <div class="hero-badge">
+                <div class="pulse-dot"></div>
+                <span>SISTEMA DE INTELIGÊNCIA FINANCEIRA • VERSÃO 2.1</span>
             </div>
 
-            <!-- NOME DO SISTEMA EM GRANDE DESTAQUE -->
-            <div class="system-main-name">
-                <span class="brand-pro">Pro</span><span class="brand-finance">Finance</span>
-            </div>
-
-            <div class="brand-badge">Sistema de Inteligência Financeira</div>
-
-            <h1 class="cover-title">
+            <h1 class="hero-title">
                 Domine o seu Dinheiro.<br>
-                <span>Controle de Gastos e Inteligência Financeira.</span>
+                <span class="highlight">Controle Total e Inteligência Financeira.</span>
             </h1>
 
-            <p class="cover-subtitle">
-                O ProFinance é a plataforma definitiva desenvolvida pela MB Tech para autônomos, MEIs e pessoas que querem ter controle absoluto dos seus gastos e finanças direto no celular e computador.
+            <p class="hero-subtitle">
+                A plataforma definitiva desenvolvida pela <strong>MB Tech</strong> para autônomos, MEIs e pessoas que querem ter controle absoluto dos seus gastos, cartões e contas — direto no celular e no computador, sem planilhas complexas.
             </p>
 
-            <div class="cover-cards-preview">
-                <div class="preview-pill">📱 Aplicativo no Celular (PWA)</div>
-                <div class="preview-pill">💳 Controle de Cartões & Faturas</div>
-                <div class="preview-pill">📊 Gráficos em Tempo Real</div>
-                <div class="preview-pill">🔒 Segurança 256-bit</div>
-            </div>
-        </div>
-
-        <div class="cover-footer">
-            <span>© 2026 MB Tech • Desenvolvido por Matheus Brito</span>
-            <span>profinance-nine.vercel.app</span>
-        </div>
-    </div>
-
-    <!-- PÁGINA 2: O PROBLEMA VS A SOLUÇÃO -->
-    <div class="page">
-        <div>
-            <div class="section-header">
-                <span class="section-tag">ProFinance • Diagnóstico Financeiro</span>
-                <h2 class="section-title">Por que 85% das Pessoas Perdem Dinheiro sem Perceber?</h2>
+            <div class="hero-cta-group">
+                <a href="https://api.whatsapp.com/send?phone=5569992816598&text=Ol%C3%A1%21%20Gostaria%20de%20adquirir%20minha%20chave%20de%20acesso%20ao%20ProFinance." target="_blank" class="btn-hero-primary">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
+                    <span>Liberar Meu Acesso Imediatamente</span>
+                </a>
+                <a href="#demonstracao" class="btn-hero-secondary">
+                    <span>▶ Ver Demonstração em Tela</span>
+                </a>
             </div>
 
-            <div class="grid-2">
-                <div class="card-problem">
-                    <div class="card-box-title" style="color: #EF4444;">
-                        <span>❌ O Caos das Finanças Comuns</span>
+            <div class="hero-trust-badges">
+                <div class="trust-badge-item">
+                    <span>📱</span>
+                    <span>Aplicativo no Celular (PWA)</span>
+                </div>
+                <div class="trust-badge-item">
+                    <span>💳</span>
+                    <span>Controle de Cartões & Faturas</span>
+                </div>
+                <div class="trust-badge-item">
+                    <span>☁️</span>
+                    <span>Sincronização em Nuvem em Tempo Real</span>
+                </div>
+                <div class="trust-badge-item">
+                    <span>🔒</span>
+                    <span>Criptografia 256-bit</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- DEMONSTRAÇÃO VISUAL DO DASHBOARD (MOCKUP INTERATIVO) -->
+        <section id="demonstracao" class="mockup-wrapper">
+            <div class="mockup-glow"></div>
+            
+            <div class="mockup-window">
+                <div class="mockup-header">
+                    <div class="mockup-dots">
+                        <div class="mockup-dot red"></div>
+                        <div class="mockup-dot yellow"></div>
+                        <div class="mockup-dot green"></div>
                     </div>
-                    <ul class="list-items">
-                        <li><span>⚠️</span> <strong>Faturas Surpresa:</strong> Comprar no cartão de crédito sem saber exatamente quanto já foi gasto do limite.</li>
-                        <li><span>⚠️</span> <strong>Gastos Fantasmas:</strong> Pequenos gastos diários no Pix que somados levam mais de R$ 800 do seu salário todo mês.</li>
-                        <li><span>⚠️</span> <strong>Planilhas Chatas:</strong> Planilhas do Excel pesadas, difíceis de mexer no celular e que você abandona em 3 dias.</li>
-                        <li><span>⚠️</span> <strong>Insegurança:</strong> Trabalhar duro o mês inteiro e chegar no dia 30 sem saber para onde o dinheiro foi.</li>
+                    <div class="mockup-url">
+                        <span>🔒</span>
+                        <span>profinance-nine.vercel.app/dashboard</span>
+                    </div>
+                    <div style="font-size: 0.75rem; color: #10B981; font-weight: 700; display: flex; align-items: center; gap: 4px;">
+                        <span style="width: 6px; height: 6px; background: #10B981; border-radius: 50%;"></span>
+                        Sincronizado
+                    </div>
+                </div>
+
+                <div class="mockup-body">
+                    <!-- Cards de KPI -->
+                    <div class="mockup-grid-kpis">
+                        <div class="mockup-kpi">
+                            <div class="mockup-kpi-label">
+                                <span>Saldo Geral em Caixa</span>
+                                <span class="mockup-kpi-badge up">+18,4%</span>
+                            </div>
+                            <div class="mockup-kpi-val" style="color: #38BDF8;">R$ 14.850,00</div>
+                        </div>
+
+                        <div class="mockup-kpi">
+                            <div class="mockup-kpi-label">
+                                <span>Receitas do Mês</span>
+                                <span class="mockup-kpi-badge up">Entradas</span>
+                            </div>
+                            <div class="mockup-kpi-val" style="color: #10B981;">R$ 22.400,00</div>
+                        </div>
+
+                        <div class="mockup-kpi">
+                            <div class="mockup-kpi-label">
+                                <span>Despesas & Contas Fixas</span>
+                                <span class="mockup-kpi-badge down">Controlado</span>
+                            </div>
+                            <div class="mockup-kpi-val" style="color: #EF4444;">R$ 7.550,00</div>
+                        </div>
+
+                        <div class="mockup-kpi">
+                            <div class="mockup-kpi-label">
+                                <span>Previsão de Sobra</span>
+                                <span class="mockup-kpi-badge up">Lucro Real</span>
+                            </div>
+                            <div class="mockup-kpi-val" style="color: #FBBF24;">R$ 14.850,00</div>
+                        </div>
+                    </div>
+
+                    <!-- Linha do Meio: Cartão de Crédito e Gráfico de Categorias -->
+                    <div class="mockup-middle-grid">
+                        <div class="mockup-card-black">
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <div class="chip"></div>
+                                <span style="font-size: 0.8rem; font-weight: 800; color: #94A3B8; letter-spacing: 1px;">BLACK EDITION</span>
+                            </div>
+                            <div>
+                                <div style="font-size: 0.8rem; color: #94A3B8; margin-bottom: 2px;">Fatura Aberta</div>
+                                <div style="font-size: 1.6rem; font-weight: 800; color: #FFFFFF; font-family: var(--font-display);">R$ 3.420,00</div>
+                            </div>
+                            <div>
+                                <div style="display: flex; justify-content: space-between; font-size: 0.75rem; color: #CBD5E1; margin-bottom: 4px;">
+                                    <span>Limite Usado: 28%</span>
+                                    <span>Disponível: R$ 8.580,00</span>
+                                </div>
+                                <div style="width: 100%; height: 6px; background: rgba(255,255,255,0.1); border-radius: 4px; overflow: hidden;">
+                                    <div style="width: 28%; height: 100%; background: linear-gradient(90deg, #38BDF8, #818CF8);"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mockup-chart-box">
+                            <div style="font-size: 0.88rem; font-weight: 700; color: #FFFFFF; margin-bottom: 12px; display: flex; justify-content: space-between;">
+                                <span>Distribuição Inteligente de Gastos</span>
+                                <span style="color: #38BDF8; font-size: 0.75rem;">Mês Atual</span>
+                            </div>
+
+                            <div>
+                                <div class="mockup-bar-row">
+                                    <span style="width: 90px; color: #94A3B8;">🛒 Mercado</span>
+                                    <div class="mockup-bar-track"><div class="mockup-bar-fill" style="width: 35%; background: #38BDF8;"></div></div>
+                                    <span style="width: 60px; text-align: right; font-weight: 700;">R$ 1.250</span>
+                                </div>
+                                <div class="mockup-bar-row">
+                                    <span style="width: 90px; color: #94A3B8;">⛽ Combustível</span>
+                                    <div class="mockup-bar-track"><div class="mockup-bar-fill" style="width: 22%; background: #F59E0B;"></div></div>
+                                    <span style="width: 60px; text-align: right; font-weight: 700;">R$ 780</span>
+                                </div>
+                                <div class="mockup-bar-row">
+                                    <span style="width: 90px; color: #94A3B8;">💡 Contas Fixas</span>
+                                    <div class="mockup-bar-track"><div class="mockup-bar-fill" style="width: 28%; background: #EF4444;"></div></div>
+                                    <span style="width: 60px; text-align: right; font-weight: 700;">R$ 980</span>
+                                </div>
+                                <div class="mockup-bar-row">
+                                    <span style="width: 90px; color: #94A3B8;">🍔 Alimentação</span>
+                                    <div class="mockup-bar-track"><div class="mockup-bar-fill" style="width: 15%; background: #10B981;"></div></div>
+                                    <span style="width: 60px; text-align: right; font-weight: 700;">R$ 540</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- O PROBLEMA VS A SOLUÇÃO -->
+        <section class="section-padding">
+            <div class="section-header">
+                <span class="section-tag">Diagnóstico Financeiro</span>
+                <h2 class="section-title">Por que 85% das Pessoas Perdem Dinheiro sem Perceber?</h2>
+                <p class="section-desc">Entenda a diferença entre viver no escuro financeiro e ter uma ferramenta de inteligência trabalhando ao seu favor.</p>
+            </div>
+
+            <div class="comparison-grid">
+                <!-- Problema -->
+                <div class="card-comparison problem">
+                    <div class="comp-title" style="color: var(--accent-red);">
+                        <span>❌ O Caos Tradicional</span>
+                    </div>
+                    <ul class="comp-list">
+                        <li class="comp-item">
+                            <span>⚠️</span>
+                            <span><strong>Faturas Surpresa:</strong> Comprar sem saber quanto do limite já foi comprometido até o susto no final do mês.</span>
+                        </li>
+                        <li class="comp-item">
+                            <span>⚠️</span>
+                            <span><strong>Gastos Fantasmas:</strong> Pequenos Pix diários de R$ 15 e R$ 25 que somados levam mais de R$ 800 do seu salário sem rastro.</span>
+                        </li>
+                        <li class="comp-item">
+                            <span>⚠️</span>
+                            <span><strong>Planilhas do Excel Chatas:</strong> Lentas, difíceis de mexer no celular e que 95% das pessoas abandonam na primeira semana.</span>
+                        </li>
+                        <li class="comp-item">
+                            <span>⚠️</span>
+                            <span><strong>Insegurança Constante:</strong> Trabalhar duro 30 dias e terminar o mês sem saber exatamente para onde seu dinheiro foi.</span>
+                        </li>
                     </ul>
                 </div>
 
-                <div class="card-solution">
-                    <div class="card-box-title" style="color: #10B981;">
+                <!-- Solução -->
+                <div class="card-comparison solution">
+                    <div class="comp-title" style="color: var(--accent-green);">
                         <span>✅ A Clareza com o ProFinance</span>
                     </div>
-                    <ul class="list-items">
-                        <li><span>💎</span> <strong>Dashboard Intuitivo:</strong> Veja seu saldo real, receitas e despesas com 1 toque no celular.</li>
-                        <li><span>💎</span> <strong>Cartões sob Controle:</strong> Limite disponível e usado calculados automaticamente em tempo real.</li>
-                        <li><span>💎</span> <strong>Gráficos Visuais:</strong> Descubra instantaneamente onde você está gastando mais para cortar desperdícios.</li>
-                        <li><span>💎</span> <strong>Liberdade e Paz Mental:</strong> Saiba exatamente quanto dinheiro vai sobrar no final de cada mês.</li>
+                    <ul class="comp-list">
+                        <li class="comp-item">
+                            <span>💎</span>
+                            <span><strong>Dashboard em 1 Toque:</strong> Veja saldo real, receitas e contas a pagar instantaneamente no celular.</span>
+                        </li>
+                        <li class="comp-item">
+                            <span>💎</span>
+                            <span><strong>Cartões sob Controle:</strong> Limite disponível, compras parceladas e vencimentos calculados sem erro.</span>
+                        </li>
+                        <li class="comp-item">
+                            <span>💎</span>
+                            <span><strong>Contas Fixas Automáticas:</strong> Projeção para até 12 meses à frente para nunca mais atrasar um boleto.</span>
+                        </li>
+                        <li class="comp-item">
+                            <span>💎</span>
+                            <span><strong>Paz e Liberdade:</strong> Saiba com exatidão matemática quanto vai sobrar no seu bolso todo mês.</span>
+                        </li>
                     </ul>
                 </div>
             </div>
 
-            <div class="highlight-banner">
-                <div>
-                    <h3 style="font-size: 12.5pt; font-weight: 800; color: #FFFFFF; margin-bottom: 2mm;">
+            <!-- Banner de Estatística -->
+            <div class="stat-banner">
+                <div style="max-width: 620px;">
+                    <h3 style="font-size: 1.35rem; font-weight: 800; color: #FFFFFF; margin-bottom: 6px;">
                         Economia Média Comprovada
                     </h3>
-                    <p style="font-size: 8.5pt; color: #94A3B8; max-width: 110mm;">
-                        Usuários do ProFinance conseguem economizar em média até <strong>25% a mais</strong> todos os meses apenas identificando vazamentos de dinheiro nos primeiros 30 dias.
+                    <p style="font-size: 0.95rem; color: var(--text-muted); line-height: 1.5;">
+                        Usuários do ProFinance conseguem estancar vazamentos de dinheiro e economizar em média até <strong>25% a mais</strong> já no primeiro mês de uso.
                     </p>
                 </div>
-                <div class="banner-stat">
-                    <div class="banner-stat-number">+ R$ 680</div>
-                    <div class="banner-stat-desc">Economia média mensal</div>
+                <div style="text-align: center;">
+                    <div class="stat-value">+ R$ 680,00</div>
+                    <div style="font-size: 0.82rem; color: var(--text-muted); font-weight: 700; margin-top: 4px;">Economia média mensal relatada</div>
                 </div>
             </div>
-        </div>
+        </section>
 
-        <div class="cover-footer">
-            <span>ProFinance by MB Tech • Inteligência em Gestão</span>
-            <span>Página 02</span>
-        </div>
-    </div>
-
-    <!-- PÁGINA 3: RECURSOS EXCLUSIVOS -->
-    <div class="page">
-        <div>
+        <!-- RECURSOS EXCLUSIVOS -->
+        <section id="recursos" class="section-padding">
             <div class="section-header">
-                <span class="section-tag">Recursos do ProFinance</span>
-                <h2 class="section-title">Tudo o que Você Precisa em um Único Lugar</h2>
+                <span class="section-tag">Recursos Poderosos</span>
+                <h2 class="section-title">Tudo o que Você Precisa em uma Única Plataforma</h2>
+                <p class="section-desc">Criado com foco em praticidade e velocidade para quem não quer perder tempo preenchendo planilhas difíceis.</p>
             </div>
 
             <div class="features-grid">
                 <div class="feature-card">
-                    <span class="feature-icon">📱</span>
-                    <h4 class="feature-name">Aplicativo Web PWA</h4>
+                    <div class="feature-icon-wrapper">📱</div>
+                    <h3 class="feature-title">Aplicativo Web PWA</h3>
                     <p class="feature-desc">
-                        Instale na tela inicial do seu celular (iPhone ou Android) em 5 segundos. Não ocupa memória do aparelho e abre instantaneamente.
+                        Instale na tela de início do seu iPhone ou Android em apenas 5 segundos. Não ocupa a memória do aparelho, abre ultrarrápido e funciona até offline.
                     </p>
                 </div>
 
                 <div class="feature-card">
-                    <span class="feature-icon">💳</span>
-                    <h4 class="feature-name">Gestão Total de Cartões</h4>
+                    <div class="feature-icon-wrapper">💳</div>
+                    <h3 class="feature-title">Gestão Total de Cartões</h3>
                     <p class="feature-desc">
-                        Cadastre seus cartões de crédito com limite, fatura e acompanhe em tempo real a porcentagem do limite utilizado para evitar juros.
+                        Cadastre múltiplos cartões de crédito com limite, dia de fechamento e vencimento. Saiba a porcentagem exata de limite comprometido em tempo real.
                     </p>
                 </div>
 
                 <div class="feature-card">
-                    <span class="feature-icon">📊</span>
-                    <h4 class="feature-name">Analytics & Gráficos Interativos</h4>
+                    <div class="feature-icon-wrapper">📅</div>
+                    <h3 class="feature-title">Contas Fixas & Recorrência</h3>
                     <p class="feature-desc">
-                        Gráficos dinâmicos que separam seus gastos por categoria: alimentação, transporte, moradia, contas fixas e lazer.
+                        Cadastre aluguel, internet, condomínio ou assinaturas uma única vez. O ProFinance projeta as contas automaticamente para até 12 meses à frente.
                     </p>
                 </div>
 
                 <div class="feature-card">
-                    <span class="feature-icon">🎯</span>
-                    <h4 class="feature-name">Metas e Teto de Gastos</h4>
+                    <div class="feature-icon-wrapper">📊</div>
+                    <h3 class="feature-title">Gráficos & Inteligência Visual</h3>
                     <p class="feature-desc">
-                        Defina metas de economia mensal e seja avisado quando estiver perto de ultrapassar o limite que você estipulou.
+                        Descubra em segundos onde está o gargalo das suas finanças através de gráficos interativos por categoria, período e método de pagamento.
                     </p>
                 </div>
 
                 <div class="feature-card">
-                    <span class="feature-icon">🔒</span>
-                    <h4 class="feature-name">Segurança Militar 256-bit</h4>
+                    <div class="feature-icon-wrapper">🏢</div>
+                    <h3 class="feature-title">Módulo Empresarial ERP</h3>
                     <p class="feature-desc">
-                        Acesso protegido por chaves criptográficas exclusivas. Seus dados financeiros são privados e pertencem exclusivamente a você.
+                        É autônomo, MEI ou tem uma empresa? Alterne do modo Pessoal para o modo Empresa com 1 clique e controle faturamento, custos e impostos separadamente.
                     </p>
                 </div>
 
                 <div class="feature-card">
-                    <span class="feature-icon">📁</span>
-                    <h4 class="feature-name">Exportação & Backup em 1 Clique</h4>
+                    <div class="feature-icon-wrapper">🔒</div>
+                    <h3 class="feature-title">Segurança & Nuvem 256-bit</h3>
                     <p class="feature-desc">
-                        Exporte relatórios completos em Excel (CSV) e JSON para o seu contador ou para guardar histórico seguro no computador.
+                        Isolamento total dos seus dados com criptografia de ponta e sincronização segura nos servidores globais do Google Cloud Firestore.
                     </p>
                 </div>
             </div>
-        </div>
+        </section>
 
-        <div class="cover-footer">
-            <span>ProFinance by MB Tech • Inovação e Tecnologia</span>
-            <span>Página 03</span>
-        </div>
-    </div>
-
-    <!-- PÁGINA 4: PLANOS & CTA -->
-    <div class="page">
-        <div>
+        <!-- PLANOS & PREÇOS -->
+        <section id="planos" class="pricing-section">
             <div class="section-header">
-                <span class="section-tag">Invista no seu Controle Financeiro</span>
-                <h2 class="section-title">Escolha o Plano Ideal do ProFinance</h2>
+                <span class="section-tag">Invista na sua Liberdade</span>
+                <h2 class="section-title">Escolha o Plano Ideal para Você</h2>
+                <p class="section-desc">Sem pegadinhas, sem taxas escondidas e com liberação imediata via Pix.</p>
             </div>
 
             <div class="pricing-grid">
                 <!-- Plano Mensal -->
                 <div class="pricing-card">
                     <div>
-                        <div class="plan-name">Plano Mensal</div>
-                        <div class="plan-price">R$ 39,90 <span>/ mês</span></div>
-                        <p style="font-size: 8pt; color: #94A3B8;">Ideal para quem quer testar e organizar o mês imediatamente.</p>
-                        
-                        <div class="plan-features">
-                            <div>✔ Acesso total ao ProFinance</div>
-                            <div>✔ Celular (PWA) e Computador</div>
-                            <div>✔ Gestão de Cartões de Crédito</div>
-                            <div>✔ Gráficos e Metas Financeiras</div>
-                            <div>✔ Suporte Direto via WhatsApp</div>
+                        <div class="plan-header">
+                            <h3 class="plan-title">Plano Mensal</h3>
+                            <p style="font-size: 0.88rem; color: var(--text-muted);">Para quem quer testar e organizar o mês imediatamente.</p>
+                            <div class="plan-price">
+                                R$ 39,90 <span class="period">/ mês</span>
+                            </div>
                         </div>
+
+                        <ul class="plan-features-list">
+                            <li>
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
+                                <span>Acesso total ao ProFinance</span>
+                            </li>
+                            <li>
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
+                                <span>Celular (PWA) e Computador</span>
+                            </li>
+                            <li>
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
+                                <span>Gestão de Cartões e Metas</span>
+                            </li>
+                            <li>
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
+                                <span>Contas Fixas e Relatórios</span>
+                            </li>
+                            <li>
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
+                                <span>Suporte Direto via WhatsApp</span>
+                            </li>
+                        </ul>
                     </div>
+
+                    <a href="https://api.whatsapp.com/send?phone=5569992816598&text=Ol%C3%A1%21%20Gostaria%20de%20assinar%20o%20Plano%20Mensal%20%28R%24%2039%2C90%29%20do%20ProFinance." target="_blank" class="btn-plan-action secondary">
+                        <span>Adquirir Plano Mensal</span>
+                    </a>
                 </div>
 
                 <!-- Plano Anual VIP -->
-                <div class="pricing-card vip">
-                    <div class="badge-recommended">MAIS VANTAJOSO</div>
+                <div class="pricing-card featured">
+                    <div class="badge-recommended">MAIS ESCOLHIDO • ECONOMIZE R$ 231</div>
                     <div>
-                        <div class="plan-name">Plano Anual VIP</div>
-                        <div class="plan-price">R$ 247,00 <span>/ ano</span></div>
-                        <p style="font-size: 8pt; color: #34D399; font-weight: 700;">Economize R$ 231 no ano (Apenas R$ 0,67 por dia!)</p>
-                        
-                        <div class="plan-features">
-                            <div>✔ <strong>12 Meses de Acesso Ininterrupto</strong></div>
-                            <div>✔ Celular (PWA) e Computador</div>
-                            <div>✔ Todas as Atualizações Incluídas</div>
-                            <div>✔ Gestão de Cartões, Gráficos e Metas</div>
-                            <div>✔ Suporte Prioritário VIP da MB Tech</div>
+                        <div class="plan-header">
+                            <h3 class="plan-title">Plano Anual VIP</h3>
+                            <p style="font-size: 0.88rem; color: #93C5FD;">O melhor custo-benefício para transformar suas finanças o ano todo.</p>
+                            <div class="plan-price">
+                                R$ 247,00 <span class="period">/ ano</span>
+                            </div>
+                            <div class="plan-economy">
+                                ⚡ Sai por apenas R$ 0,67 ao dia (Economia de mais de 48%!)
+                            </div>
                         </div>
+
+                        <ul class="plan-features-list">
+                            <li>
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
+                                <span><strong>12 Meses de Acesso Ininterrupto</strong></span>
+                            </li>
+                            <li>
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
+                                <span>Celular (PWA) e Computador</span>
+                            </li>
+                            <li>
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
+                                <span>Todas as Atualizações da Versão 2.1 Incluídas</span>
+                            </li>
+                            <li>
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
+                                <span>Módulo Pessoal + Módulo Empresarial ERP</span>
+                            </li>
+                            <li>
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
+                                <span><strong>Suporte Prioritário VIP da MB Tech</strong></span>
+                            </li>
+                        </ul>
+                    </div>
+
+                    <a href="https://api.whatsapp.com/send?phone=5569992816598&text=Ol%C3%A1%21%20Gostaria%20de%20assinar%20o%20Plano%20Anual%20VIP%20%28R%24%20247%2C00%29%20do%20ProFinance." target="_blank" class="btn-plan-action primary">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
+                        <span>Garantir Acesso Anual VIP</span>
+                    </a>
+                </div>
+            </div>
+
+            <!-- Box PIX & Passo a Passo -->
+            <div class="pix-box">
+                <h3 style="font-size: 1.45rem; font-weight: 800; color: #FFFFFF; margin-bottom: 8px;">
+                    🚀 Como Liberar o Seu Acesso Imediatamente:
+                </h3>
+                <p style="font-size: 0.95rem; color: var(--text-muted); max-width: 600px; margin: 0 auto;">
+                    Faça o Pix do plano escolhido e envie o comprovante no WhatsApp. Você recebe sua <strong>Chave Exclusiva de 16 Dígitos</strong> e começa a usar na hora!
+                </p>
+
+                <div class="pix-key-pill" id="btn-copy-pix" onclick="copyPixKey()" title="Clique para copiar a chave Pix">
+                    <span>💳 Chave Pix (CPF): <strong id="pix-key-val">03779104229</strong> (Matheus Brito)</span>
+                    <span id="copy-feedback-badge" style="font-size: 0.75rem; background: #10B981; color: #FFFFFF; padding: 2px 8px; border-radius: 6px;">📋 Copiar</span>
+                </div>
+
+                <div style="margin-top: 10px;">
+                    <a href="https://api.whatsapp.com/send?phone=5569992816598&text=Ol%C3%A1%21%20Acabei%20de%20fazer%20o%20Pix%20do%20ProFinance%2C%20segue%20o%20comprovante%20para%20libera%C3%A7%C3%A3o%20da%20minha%20chave%3A" target="_blank" style="display: inline-flex; align-items: center; gap: 8px; color: #34D399; font-weight: 700; text-decoration: none; font-size: 0.92rem;">
+                        <span>📲 Enviar Comprovante no WhatsApp: (69) 99281-6598 ↗</span>
+                    </a>
+                </div>
+            </div>
+        </section>
+
+        <!-- PERGUNTAS FREQUENTES (FAQ) -->
+        <section id="faq" class="faq-section">
+            <div class="section-header">
+                <span class="section-tag">Tire Suas Dúvidas</span>
+                <h2 class="section-title">Perguntas Frequentes</h2>
+                <p class="section-desc">Tudo o que você precisa saber antes de começar.</p>
+            </div>
+
+            <div class="faq-list">
+                <div class="faq-item active">
+                    <div class="faq-question" onclick="toggleFaq(this)">
+                        <span>Preciso baixar na Google Play ou App Store?</span>
+                        <span class="faq-chevron">▼</span>
+                    </div>
+                    <div class="faq-answer">
+                        Não! O ProFinance é uma aplicação PWA moderna. Você acessa direto pelo navegador e, com um simples toque em <strong>"Adicionar à Tela de Início"</strong>, ele instala como um aplicativo nativo no seu iPhone ou Android, sem ocupar memória do aparelho e sem atualizações chatas.
+                    </div>
+                </div>
+
+                <div class="faq-item">
+                    <div class="faq-question" onclick="toggleFaq(this)">
+                        <span>Funciona no celular e no computador ao mesmo tempo?</span>
+                        <span class="faq-chevron">▼</span>
+                    </div>
+                    <div class="faq-answer">
+                        Sim! Seus dados são sincronizados em nuvem em tempo real através do Google Cloud Firestore. Você pode lançar um café no celular na rua e, ao abrir seu computador no trabalho, tudo estará atualizado instantaneamente.
+                    </div>
+                </div>
+
+                <div class="faq-item">
+                    <div class="faq-question" onclick="toggleFaq(this)">
+                        <span>Meus dados financeiros ficam seguros e privados?</span>
+                        <span class="faq-chevron">▼</span>
+                    </div>
+                    <div class="faq-answer">
+                        100% seguros! Cada cliente opera em um ambiente estritamente isolado (*Multi-Tenant Scoped Storage*), com criptografia 256-bit. Ninguém tem acesso aos seus dados financeiros além de você.
+                    </div>
+                </div>
+
+                <div class="faq-item">
+                    <div class="faq-question" onclick="toggleFaq(this)">
+                        <span>Como eu recebo o meu acesso após o pagamento?</span>
+                        <span class="faq-chevron">▼</span>
+                    </div>
+                    <div class="faq-answer">
+                        De forma imediata! Assim que enviar o comprovante no WhatsApp do Matheus Brito, uma chave de licença única de 16 caracteres é gerada e enviada para você. Basta colar a chave no aplicativo e começar a usar na hora.
+                    </div>
+                </div>
+
+                <div class="faq-item">
+                    <div class="faq-question" onclick="toggleFaq(this)">
+                        <span>Posso separar minhas contas pessoais das contas da minha empresa?</span>
+                        <span class="faq-chevron">▼</span>
+                    </div>
+                    <div class="faq-answer">
+                        Sim! O ProFinance possui dois módulos nativos: Finanças Pessoais e Gestão Empresarial ERP. Você alterna entre eles com apenas 1 clique, mantendo suas contas de pessoa física e jurídica totalmente organizadas e separadas.
                     </div>
                 </div>
             </div>
+        </section>
 
-            <!-- Box de Ação Direta -->
-            <div class="cta-box">
-                <h3 class="cta-title">🚀 Como Ativar seu Acesso Imediatamente:</h3>
-                <p style="font-size: 8.5pt; color: #CBD5E1; max-width: 140mm; line-height: 1.5;">
-                    1. Efetue o pagamento do plano escolhido via Pix oficial (Matheus Brito).<br>
-                    2. Envie o comprovante no WhatsApp.<br>
-                    3. Você recebe sua <strong>Chave Exclusiva de 16 Dígitos</strong> e começa a usar na hora!
-                </p>
-                <div class="cta-pix">
-                    💳 Chave Pix (CPF): <strong>03779104229</strong> (Matheus Brito)
-                </div>
-                <div style="margin: 3mm 0;">
-                    <a href="https://api.whatsapp.com/send?phone=5569992816598&text=Ol%C3%A1%21%20Gostaria%20de%20adquirir%20minha%20chave%20de%20acesso%20ao%20ProFinance." target="_blank" style="display: inline-flex; align-items: center; justify-content: center; gap: 8px; background: linear-gradient(135deg, #10B981 0%, #059669 100%); color: #FFFFFF; text-decoration: none; padding: 10px 22px; border-radius: 999px; font-weight: 800; font-size: 10pt; box-shadow: 0 4px 18px rgba(16, 185, 129, 0.45);">
-                        <span>💬 Enviar Comprovante / Adquirir: (69) 99281-6598</span>
-                    </a>
-                </div>
-                <div>
-                    <a href="https://profinance-nine.vercel.app" class="cta-link">🌐 Acesse a plataforma: <strong>profinance-nine.vercel.app</strong></a>
-                </div>
-            </div>
-        </div>
-
-        <div class="cover-footer">
-            <span>Desenvolvido e Distribuído por MB Tech • CNPJ: 69.234.012/0001-87</span>
-            <span>Página 04</span>
-        </div>
     </div>
 
+    <!-- FOOTER INSTITUCIONAL -->
+    <footer class="footer">
+        <div class="footer-content">
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <span style="font-weight: 900; font-size: 1.15rem; color: #FFFFFF;">MB TECH</span>
+                <span style="font-size: 0.75rem; background: #1E293B; padding: 2px 8px; border-radius: 4px; color: #94A3B8; font-weight: 700;">SOFTWARE HOUSE</span>
+            </div>
+            <p style="font-size: 0.85rem; color: var(--text-dim); max-width: 600px;">
+                ProFinance • Sistema de Inteligência Financeira e Gestão de Gastos.<br>
+                Desenvolvido por <strong>Matheus Brito</strong> • CNPJ: 69.234.012/0001-87
+            </p>
+            <div style="display: flex; gap: 16px; font-size: 0.85rem;">
+                <a href="https://profinance-nine.vercel.app/" style="color: #93C5FD; text-decoration: none;">Acessar Plataforma Web</a>
+                <span style="color: var(--text-dim);">•</span>
+                <a href="https://api.whatsapp.com/send?phone=5569992816598" target="_blank" style="color: #34D399; text-decoration: none;">WhatsApp Comercial: (69) 99281-6598</a>
+            </div>
+            <p style="font-size: 0.78rem; color: #475569; margin-top: 10px;">
+                © 2026 MB Tech. Todos os direitos reservados.
+            </p>
+        </div>
+    </footer>
+
+    <!-- BOTÃO FLUTUANTE DE WHATSAPP -->
+    <a href="https://api.whatsapp.com/send?phone=5569992816598&text=Ol%C3%A1%2C%20Matheus%21%20Vi%20a%20apresenta%C3%A7%C3%A3o%20do%20ProFinance%20e%20gostaria%20de%20tirar%20uma%20d%C3%BAvida%20sobre%20o%20acesso." target="_blank" class="floating-wa-btn" title="Falar no WhatsApp com Matheus Brito">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
+        <span>Falar no WhatsApp</span>
+    </a>
+
+    <script>
+        // Função para Copiar a Chave Pix com Feedback Visual
+        function copyPixKey() {
+            const pixVal = document.getElementById('pix-key-val').innerText.trim();
+            const badge = document.getElementById('copy-feedback-badge');
+            
+            navigator.clipboard.writeText(pixVal).then(() => {
+                badge.innerText = '✅ Copiado!';
+                badge.style.background = '#059669';
+                setTimeout(() => {
+                    badge.innerText = '📋 Copiar';
+                    badge.style.background = '#10B981';
+                }, 3000);
+            }).catch(() => {
+                prompt('Copie a chave Pix manualmente:', pixVal);
+            });
+        }
+
+        // Função para o Acordeão do FAQ
+        function toggleFaq(element) {
+            const item = element.parentElement;
+            const wasActive = item.classList.contains('active');
+            
+            // Fecha todos
+            document.querySelectorAll('.faq-item').forEach(el => el.classList.remove('active'));
+            
+            // Abre o clicado se não estava ativo
+            if (!wasActive) {
+                item.classList.add('active');
+            }
+        }
+    </script>
 </body>
 </html>
