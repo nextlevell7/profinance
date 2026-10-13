@@ -36,11 +36,24 @@ let currentActiveClientKey = null;
 export function getSyncClientKey() {
   const saved = localStorage.getItem('profinance_saved_client_key');
   if (saved && saved.trim()) return saved.trim();
-  return 'admin_master';
+
+  // Apenas Administrador Master autenticado na sessão tem acesso ao canal 'admin_master'
+  const adminPass = sessionStorage.getItem('profinance_admin_pass');
+  const isMasterAuthed = adminPass && (
+    adminPass === '9937314286890361836671256cf88709c26bef673d201989e89f73611b55e77b' ||
+    (typeof window !== 'undefined' && window.currentAuthSession && window.currentAuthSession.role === 'admin')
+  );
+
+  if (isMasterAuthed) {
+    return 'admin_master';
+  }
+
+  // Sem autenticação: NUNCA sincronizar com conta de terceiros
+  return null;
 }
 
 function pushToCloud(key, payload, clientKey) {
-  if (!payload || isReceivingFromCloud) return;
+  if (!payload || isReceivingFromCloud || !clientKey) return;
   lastKnownPayloads[key] = payload;
   const cloudDocId = `${clientKey}_${key}`;
   setDoc(doc(db, "sync_data", cloudDocId), {
@@ -51,11 +64,18 @@ function pushToCloud(key, payload, clientKey) {
 
 export function initFirebaseSync() {
   const clientKey = getSyncClientKey();
+  if (!clientKey) {
+    activeListeners.forEach(unsub => { try { unsub(); } catch(e){} });
+    activeListeners = [];
+    currentActiveClientKey = null;
+    return;
+  }
+
   if (currentActiveClientKey === clientKey && activeListeners.length > 0) {
     return;
   }
   currentActiveClientKey = clientKey;
-  console.log(`🔥 Firebase Sync Inicializado para: ${clientKey}`);
+  console.log(`🔥 Firebase Sync Inicializado para conta isolada: ${clientKey}`);
 
   activeListeners.forEach(unsub => { try { unsub(); } catch(e){} });
   activeListeners = [];
@@ -66,7 +86,9 @@ export function initFirebaseSync() {
       originalSetItem.apply(this, arguments);
       if (SYNC_KEYS.includes(key) && !isReceivingFromCloud) {
         const cKey = getSyncClientKey();
-        pushToCloud(key, value, cKey);
+        if (cKey) {
+          pushToCloud(key, value, cKey);
+        }
       }
     };
     window._firebaseSyncPatched = true;
@@ -92,10 +114,15 @@ export function initFirebaseSync() {
           window.dispatchEvent(new CustomEvent('cloudSyncUpdate', { detail: key }));
         }
       } else {
-        const localVal = localStorage.getItem(key);
-        if (localVal) {
-          pushToCloud(key, localVal, clientKey);
+        // Documento na nuvem ainda não existe para este usuário
+        // Só faz upload se for admin_master (migração inicial)
+        if (clientKey === 'admin_master') {
+          const localVal = localStorage.getItem(key);
+          if (localVal) {
+            pushToCloud(key, localVal, clientKey);
+          }
         }
+        // Para contas de clientes novos: nunca sobe resíduos de outros usuários! Começa limpo.
       }
     }, (err) => {
       console.error(`Firebase snapshot error for ${cloudDocId}:`, err);
@@ -113,7 +140,7 @@ window.addEventListener('focus', () => {
   }
 });
 window.addEventListener('storage', (e) => {
-  if (e.key === 'profinance_saved_client_key') {
+  if (e.key === 'profinance_saved_client_key' || e.key === 'profinance_active_scope') {
     initFirebaseSync();
   }
 });
