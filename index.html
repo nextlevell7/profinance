@@ -3,8 +3,116 @@
 <head>
     <script>
 window.onerror = function(msg, url, line, col, error) {
-    alert("ERRO JS: " + msg + "\nLinha: " + line + "\nColuna: " + col);
+    console.error("ERRO JS: " + msg + "\nLinha: " + line + "\nColuna: " + col);
 };
+
+// ========================================================
+// ENGINE DE ISOLAMENTO MULTI-TENANT (SCOPED STORAGE)
+// ========================================================
+const SYNC_KEYS = [
+  'profinance_app_data',
+  'profinance_cards',
+  'profinance_budgets',
+  'profinance_custom_cats',
+  'profinance_custom_origins',
+  'profinance_deleted_origins',
+  'profinance_deleted_cats',
+  'profinance_fixed_bills',
+  'profinance_business_profile',
+  'profinance_business_taxes',
+  'profinance_transactions'
+];
+
+function getActiveUserScope() {
+  try {
+    const activeScope = sessionStorage.getItem('profinance_active_scope');
+    if (activeScope && activeScope.trim()) {
+      return activeScope.trim();
+    }
+    const adminPass = sessionStorage.getItem('profinance_admin_pass');
+    if (adminPass && (adminPass === '9937314286890361836671256cf88709c26bef673d201989e89f73611b55e77b' || (window.currentAuthSession && window.currentAuthSession.role === 'admin'))) {
+      return 'admin_master';
+    }
+    const sessionJson = sessionStorage.getItem('profinance_auth_session');
+    if (sessionJson) {
+      const sess = JSON.parse(sessionJson);
+      if (sess && sess.role === 'admin') return 'admin_master';
+      if (sess && sess.role === 'client' && sess.key) return sess.key;
+    }
+  } catch(e) {}
+
+  if (window.currentAuthSession) {
+    if (window.currentAuthSession.role === 'admin') return 'admin_master';
+    if (window.currentAuthSession.role === 'client' && window.currentAuthSession.key) return window.currentAuthSession.key;
+  }
+
+  const savedKey = localStorage.getItem('profinance_saved_client_key');
+  if (savedKey && savedKey.trim()) return savedKey.trim();
+
+  return 'unauthenticated';
+}
+window.getActiveUserScope = getActiveUserScope;
+
+(function() {
+  const origGet = Storage.prototype.getItem;
+  const origSet = Storage.prototype.setItem;
+  const origRemove = Storage.prototype.removeItem;
+
+  Storage.prototype.getItem = function(key) {
+    if (this === window.localStorage && SYNC_KEYS.includes(key)) {
+      const scope = getActiveUserScope();
+      if (scope && scope !== 'unauthenticated') {
+        const scopedKey = `${scope}_${key}`;
+        const val = origGet.call(this, scopedKey);
+        if (val !== null && val !== undefined) return val;
+
+        // Migração legacy para Admin Master (caso estivesse sem prefixo)
+        if (scope === 'admin_master') {
+          const legacyVal = origGet.call(this, `scope_admin_master_${key}`) || origGet.call(this, key);
+          if (legacyVal !== null && legacyVal !== undefined) {
+            origSet.call(this, scopedKey, legacyVal);
+            return legacyVal;
+          }
+        }
+
+        // Padrões limpos para clientes ou contas novas
+        if (key === 'profinance_budgets') {
+          return JSON.stringify([
+            { category: '🛒 Mercado', limit: 1500 },
+            { category: '⛽ Combustível', limit: 800 },
+            { category: '🍔 Alimentação', limit: 600 }
+          ]);
+        }
+        return '[]';
+      }
+      return '[]';
+    }
+    return origGet.call(this, key);
+  };
+
+  Storage.prototype.setItem = function(key, value) {
+    if (this === window.localStorage && SYNC_KEYS.includes(key)) {
+      const scope = getActiveUserScope();
+      if (scope && scope !== 'unauthenticated') {
+        const scopedKey = `${scope}_${key}`;
+        origSet.call(this, scopedKey, value);
+        return;
+      }
+    }
+    origSet.call(this, key, value);
+  };
+
+  Storage.prototype.removeItem = function(key) {
+    if (this === window.localStorage && SYNC_KEYS.includes(key)) {
+      const scope = getActiveUserScope();
+      if (scope && scope !== 'unauthenticated') {
+        origRemove.call(this, `${scope}_${key}`);
+        return;
+      }
+    }
+    origRemove.call(this, key);
+  };
+})();
 </script>
     <meta charset="UTF-8">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
@@ -4927,68 +5035,10 @@ window.onerror = function(msg, url, line, col, error) {
 
     function switchUserStorageScope(targetScope) {
         if (!targetScope) return;
-        let currentScope = localStorage.getItem('profinance_active_scope');
-
-        const SCOPE_KEYS = [
-            'profinance_app_data', 'profinance_cards', 'profinance_budgets',
-            'profinance_custom_cats', 'profinance_custom_origins', 'profinance_deleted_origins',
-            'profinance_deleted_cats', 'profinance_fixed_bills', 'profinance_business_profile',
-            'profinance_business_taxes'
-        ];
-
-        // Migração de primeira execução neste navegador: se não houver escopo gravado, os dados originais pertencem ao Master
-        if (!currentScope) {
-            currentScope = 'admin_master';
-            SCOPE_KEYS.forEach(key => {
-                const val = localStorage.getItem(key);
-                if (val !== null) {
-                    localStorage.setItem(`scope_admin_master_${key}`, val);
-                }
-            });
-            localStorage.setItem('profinance_active_scope', 'admin_master');
-        }
-
-        if (currentScope === targetScope) {
-            reloadAllMemoryVariables();
-            return;
-        }
-
-        console.log(`🔀 Alternando escopo de dados: de [${currentScope}] para [${targetScope}]`);
-
-        // 1. Salva dados atuais no escopo anterior (se não for unauthenticated)
-        if (currentScope !== 'unauthenticated') {
-            SCOPE_KEYS.forEach(key => {
-                const val = localStorage.getItem(key);
-                if (val !== null) {
-                    localStorage.setItem(`scope_${currentScope}_${key}`, val);
-                }
-            });
-        }
-
-        // 2. Carrega dados do novo escopo ou inicializa 100% ZERADO
-        SCOPE_KEYS.forEach(key => {
-            const scopedVal = localStorage.getItem(`scope_${targetScope}_${key}`);
-            if (scopedVal !== null) {
-                localStorage.setItem(key, scopedVal);
-            } else {
-                // Novo usuário / nova licença: INICIALIZA ZERADO!
-                if (key === 'profinance_app_data' || key === 'profinance_cards' || key === 'profinance_fixed_bills' ||
-                    key === 'profinance_custom_origins' || key === 'profinance_custom_cats' ||
-                    key === 'profinance_deleted_origins' || key === 'profinance_deleted_cats') {
-                    localStorage.setItem(key, '[]');
-                } else if (key === 'profinance_budgets') {
-                    localStorage.setItem(key, JSON.stringify([
-                        { category: '🛒 Mercado', limit: 1500 },
-                        { category: '⛽ Combustível', limit: 800 },
-                        { category: '🍔 Alimentação', limit: 600 }
-                    ]));
-                } else {
-                    localStorage.removeItem(key);
-                }
-            }
-        });
-
-        localStorage.setItem('profinance_active_scope', targetScope);
+        try {
+            sessionStorage.setItem('profinance_active_scope', targetScope);
+        } catch(e) {}
+        console.log(`🔀 Escopo ativo da aba definido como: [${targetScope}]`);
         reloadAllMemoryVariables();
     }
     window.switchUserStorageScope = switchUserStorageScope;
@@ -5001,20 +5051,6 @@ window.onerror = function(msg, url, line, col, error) {
 
         if (!confirm(confirmMsg)) return;
 
-        const currentScope = localStorage.getItem('profinance_active_scope') || (isClient ? localStorage.getItem('profinance_saved_client_key') : 'admin_master');
-        if (currentScope && currentScope !== 'unauthenticated') {
-            const SCOPE_KEYS = [
-                'profinance_app_data', 'profinance_cards', 'profinance_budgets',
-                'profinance_custom_cats', 'profinance_custom_origins', 'profinance_deleted_origins',
-                'profinance_deleted_cats', 'profinance_fixed_bills', 'profinance_business_profile',
-                'profinance_business_taxes'
-            ];
-            SCOPE_KEYS.forEach(key => {
-                const val = localStorage.getItem(key);
-                if (val !== null) localStorage.setItem(`scope_${currentScope}_${key}`, val);
-            });
-        }
-
         if (isClient) {
             localStorage.removeItem('profinance_saved_client_key');
         } else {
@@ -5022,21 +5058,9 @@ window.onerror = function(msg, url, line, col, error) {
             localStorage.removeItem('profinance_admin_pass');
         }
         sessionStorage.removeItem('profinance_auth_session');
+        sessionStorage.removeItem('profinance_active_scope');
         currentAuthSession = null;
         window.currentAuthSession = null;
-        localStorage.setItem('profinance_active_scope', 'unauthenticated');
-
-        // Limpa variáveis do localStorage para não deixar resquícios no computador
-        ['profinance_app_data', 'profinance_cards', 'profinance_fixed_bills',
-         'profinance_custom_origins', 'profinance_custom_cats',
-         'profinance_deleted_origins', 'profinance_deleted_cats'].forEach(k => localStorage.setItem(k, '[]'));
-        localStorage.setItem('profinance_budgets', JSON.stringify([
-            { category: '🛒 Mercado', limit: 1500 },
-            { category: '⛽ Combustível', limit: 800 },
-            { category: '🍔 Alimentação', limit: 600 }
-        ]));
-        localStorage.removeItem('profinance_business_profile');
-        localStorage.removeItem('profinance_business_taxes');
 
         location.reload();
     };
@@ -8662,7 +8686,8 @@ const SYNC_KEYS = [
   'profinance_deleted_cats',
   'profinance_fixed_bills',
   'profinance_business_profile',
-  'profinance_business_taxes'
+  'profinance_business_taxes',
+  'profinance_transactions'
 ];
 
 let isReceivingFromCloud = false;
@@ -8671,26 +8696,18 @@ let lastKnownPayloads = {};
 let currentActiveClientKey = null;
 
 export function getSyncClientKey() {
-  const saved = localStorage.getItem('profinance_saved_client_key');
-  if (saved && saved.trim()) return saved.trim();
+  const scope = typeof window !== 'undefined' && typeof window.getActiveUserScope === 'function'
+    ? window.getActiveUserScope()
+    : null;
 
-  // Apenas Administrador Master autenticado na sessão tem acesso ao canal 'admin_master'
-  const adminPass = sessionStorage.getItem('profinance_admin_pass');
-  const isMasterAuthed = adminPass && (
-    adminPass === '9937314286890361836671256cf88709c26bef673d201989e89f73611b55e77b' ||
-    (typeof window !== 'undefined' && window.currentAuthSession && window.currentAuthSession.role === 'admin')
-  );
-
-  if (isMasterAuthed) {
-    return 'admin_master';
+  if (scope && scope !== 'unauthenticated') {
+    return scope;
   }
-
-  // Sem autenticação: NUNCA sincronizar com conta de terceiros
   return null;
 }
 
 function pushToCloud(key, payload, clientKey) {
-  if (!payload || isReceivingFromCloud || !clientKey) return;
+  if (!payload || isReceivingFromCloud || !clientKey || clientKey === 'unauthenticated') return;
   lastKnownPayloads[key] = payload;
   const cloudDocId = `${clientKey}_${key}`;
   setDoc(doc(db, "sync_data", cloudDocId), {
@@ -8712,7 +8729,7 @@ export function initFirebaseSync() {
     return;
   }
   currentActiveClientKey = clientKey;
-  console.log(`🔥 Firebase Sync Inicializado para conta isolada: ${clientKey}`);
+  console.log(`🔥 Firebase Sync Inicializado para conta isolada: [${clientKey}]`);
 
   activeListeners.forEach(unsub => { try { unsub(); } catch(e){} });
   activeListeners = [];
@@ -8739,7 +8756,7 @@ export function initFirebaseSync() {
       if (snapshot.exists()) {
         const data = snapshot.data();
         if (data && data.payload !== undefined && data.payload !== lastKnownPayloads[key]) {
-          console.log(`📥 Atualização da nuvem recebida para [${key}]`);
+          console.log(`📥 Atualização da nuvem recebida para [${clientKey} / ${key}]`);
           lastKnownPayloads[key] = data.payload;
           isReceivingFromCloud = true;
           if (data.payload === null || data.payload === undefined) {
@@ -8752,14 +8769,12 @@ export function initFirebaseSync() {
         }
       } else {
         // Documento na nuvem ainda não existe para este usuário
-        // Só faz upload se for admin_master (migração inicial)
         if (clientKey === 'admin_master') {
           const localVal = localStorage.getItem(key);
           if (localVal) {
             pushToCloud(key, localVal, clientKey);
           }
         }
-        // Para contas de clientes novos: nunca sobe resíduos de outros usuários! Começa limpo.
       }
     }, (err) => {
       console.error(`Firebase snapshot error for ${cloudDocId}:`, err);
@@ -8777,8 +8792,16 @@ window.addEventListener('focus', () => {
   }
 });
 window.addEventListener('storage', (e) => {
-  if (e.key === 'profinance_saved_client_key' || e.key === 'profinance_active_scope') {
-    initFirebaseSync();
+  const scope = typeof window !== 'undefined' && typeof window.getActiveUserScope === 'function'
+    ? window.getActiveUserScope()
+    : null;
+  if (!scope || scope === 'unauthenticated') return;
+  const expectedPrefix = `${scope}_`;
+  if (e.key && e.key.startsWith(expectedPrefix)) {
+    const rawKey = e.key.substring(expectedPrefix.length);
+    if (SYNC_KEYS.includes(rawKey)) {
+      window.dispatchEvent(new CustomEvent('cloudSyncUpdate', { detail: rawKey }));
+    }
   }
 });
 

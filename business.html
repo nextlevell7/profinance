@@ -5,14 +5,126 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ProFinance ERP - Gestão Empresarial</title>
     <script>
-        (function() {
-            const hasAdmin = sessionStorage.getItem('profinance_admin_pass') === '9937314286890361836671256cf88709c26bef673d201989e89f73611b55e77b';
-            const hasClient = localStorage.getItem('profinance_saved_client_key');
-            const authSession = sessionStorage.getItem('profinance_auth_session');
-            if (!hasAdmin && !hasClient && !authSession) {
-                window.location.replace('index.html');
-            }
-        })();
+window.onerror = function(msg, url, line, col, error) {
+    console.error("ERRO JS: " + msg + "\nLinha: " + line + "\nColuna: " + col);
+};
+
+// ========================================================
+// ENGINE DE ISOLAMENTO MULTI-TENANT (SCOPED STORAGE)
+// ========================================================
+const SYNC_KEYS = [
+  'profinance_app_data',
+  'profinance_cards',
+  'profinance_budgets',
+  'profinance_custom_cats',
+  'profinance_custom_origins',
+  'profinance_deleted_origins',
+  'profinance_deleted_cats',
+  'profinance_fixed_bills',
+  'profinance_business_profile',
+  'profinance_business_taxes',
+  'profinance_transactions'
+];
+
+function getActiveUserScope() {
+  try {
+    const activeScope = sessionStorage.getItem('profinance_active_scope');
+    if (activeScope && activeScope.trim()) {
+      return activeScope.trim();
+    }
+    const adminPass = sessionStorage.getItem('profinance_admin_pass');
+    if (adminPass && (adminPass === '9937314286890361836671256cf88709c26bef673d201989e89f73611b55e77b' || (window.currentAuthSession && window.currentAuthSession.role === 'admin'))) {
+      return 'admin_master';
+    }
+    const sessionJson = sessionStorage.getItem('profinance_auth_session');
+    if (sessionJson) {
+      const sess = JSON.parse(sessionJson);
+      if (sess && sess.role === 'admin') return 'admin_master';
+      if (sess && sess.role === 'client' && sess.key) return sess.key;
+    }
+  } catch(e) {}
+
+  if (window.currentAuthSession) {
+    if (window.currentAuthSession.role === 'admin') return 'admin_master';
+    if (window.currentAuthSession.role === 'client' && window.currentAuthSession.key) return window.currentAuthSession.key;
+  }
+
+  const savedKey = localStorage.getItem('profinance_saved_client_key');
+  if (savedKey && savedKey.trim()) return savedKey.trim();
+
+  return 'unauthenticated';
+}
+window.getActiveUserScope = getActiveUserScope;
+
+(function() {
+  const origGet = Storage.prototype.getItem;
+  const origSet = Storage.prototype.setItem;
+  const origRemove = Storage.prototype.removeItem;
+
+  Storage.prototype.getItem = function(key) {
+    if (this === window.localStorage && SYNC_KEYS.includes(key)) {
+      const scope = getActiveUserScope();
+      if (scope && scope !== 'unauthenticated') {
+        const scopedKey = `${scope}_${key}`;
+        const val = origGet.call(this, scopedKey);
+        if (val !== null && val !== undefined) return val;
+
+        // Migração legacy para Admin Master (caso estivesse sem prefixo)
+        if (scope === 'admin_master') {
+          const legacyVal = origGet.call(this, `scope_admin_master_${key}`) || origGet.call(this, key);
+          if (legacyVal !== null && legacyVal !== undefined) {
+            origSet.call(this, scopedKey, legacyVal);
+            return legacyVal;
+          }
+        }
+
+        // Padrões limpos para clientes ou contas novas
+        if (key === 'profinance_budgets') {
+          return JSON.stringify([
+            { category: '🛒 Mercado', limit: 1500 },
+            { category: '⛽ Combustível', limit: 800 },
+            { category: '🍔 Alimentação', limit: 600 }
+          ]);
+        }
+        return '[]';
+      }
+      return '[]';
+    }
+    return origGet.call(this, key);
+  };
+
+  Storage.prototype.setItem = function(key, value) {
+    if (this === window.localStorage && SYNC_KEYS.includes(key)) {
+      const scope = getActiveUserScope();
+      if (scope && scope !== 'unauthenticated') {
+        const scopedKey = `${scope}_${key}`;
+        origSet.call(this, scopedKey, value);
+        return;
+      }
+    }
+    origSet.call(this, key, value);
+  };
+
+  Storage.prototype.removeItem = function(key) {
+    if (this === window.localStorage && SYNC_KEYS.includes(key)) {
+      const scope = getActiveUserScope();
+      if (scope && scope !== 'unauthenticated') {
+        origRemove.call(this, `${scope}_${key}`);
+        return;
+      }
+    }
+    origRemove.call(this, key);
+  };
+})();
+
+(function() {
+    const hasAdmin = sessionStorage.getItem('profinance_admin_pass') === '9937314286890361836671256cf88709c26bef673d201989e89f73611b55e77b';
+    const hasClient = localStorage.getItem('profinance_saved_client_key');
+    const authSession = sessionStorage.getItem('profinance_auth_session');
+    if (!hasAdmin && !hasClient && !authSession) {
+        window.location.replace('index.html');
+    }
+})();
     </script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
             <link rel="preconnect" href="https://fonts.googleapis.com">

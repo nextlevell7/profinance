@@ -25,7 +25,8 @@ const SYNC_KEYS = [
   'profinance_deleted_cats',
   'profinance_fixed_bills',
   'profinance_business_profile',
-  'profinance_business_taxes'
+  'profinance_business_taxes',
+  'profinance_transactions'
 ];
 
 let isReceivingFromCloud = false;
@@ -34,26 +35,18 @@ let lastKnownPayloads = {};
 let currentActiveClientKey = null;
 
 export function getSyncClientKey() {
-  const saved = localStorage.getItem('profinance_saved_client_key');
-  if (saved && saved.trim()) return saved.trim();
+  const scope = typeof window !== 'undefined' && typeof window.getActiveUserScope === 'function'
+    ? window.getActiveUserScope()
+    : null;
 
-  // Apenas Administrador Master autenticado na sessão tem acesso ao canal 'admin_master'
-  const adminPass = sessionStorage.getItem('profinance_admin_pass');
-  const isMasterAuthed = adminPass && (
-    adminPass === '9937314286890361836671256cf88709c26bef673d201989e89f73611b55e77b' ||
-    (typeof window !== 'undefined' && window.currentAuthSession && window.currentAuthSession.role === 'admin')
-  );
-
-  if (isMasterAuthed) {
-    return 'admin_master';
+  if (scope && scope !== 'unauthenticated') {
+    return scope;
   }
-
-  // Sem autenticação: NUNCA sincronizar com conta de terceiros
   return null;
 }
 
 function pushToCloud(key, payload, clientKey) {
-  if (!payload || isReceivingFromCloud || !clientKey) return;
+  if (!payload || isReceivingFromCloud || !clientKey || clientKey === 'unauthenticated') return;
   lastKnownPayloads[key] = payload;
   const cloudDocId = `${clientKey}_${key}`;
   setDoc(doc(db, "sync_data", cloudDocId), {
@@ -75,7 +68,7 @@ export function initFirebaseSync() {
     return;
   }
   currentActiveClientKey = clientKey;
-  console.log(`🔥 Firebase Sync Inicializado para conta isolada: ${clientKey}`);
+  console.log(`🔥 Firebase Sync Conectado para conta isolada: [${clientKey}]`);
 
   activeListeners.forEach(unsub => { try { unsub(); } catch(e){} });
   activeListeners = [];
@@ -102,7 +95,7 @@ export function initFirebaseSync() {
       if (snapshot.exists()) {
         const data = snapshot.data();
         if (data && data.payload !== undefined && data.payload !== lastKnownPayloads[key]) {
-          console.log(`📥 Atualização da nuvem recebida para [${key}]`);
+          console.log(`📥 Atualização da nuvem recebida para [${clientKey} / ${key}]`);
           lastKnownPayloads[key] = data.payload;
           isReceivingFromCloud = true;
           if (data.payload === null || data.payload === undefined) {
@@ -114,15 +107,13 @@ export function initFirebaseSync() {
           window.dispatchEvent(new CustomEvent('cloudSyncUpdate', { detail: key }));
         }
       } else {
-        // Documento na nuvem ainda não existe para este usuário
-        // Só faz upload se for admin_master (migração inicial)
+        // Documento na nuvem não existe para este usuário
         if (clientKey === 'admin_master') {
           const localVal = localStorage.getItem(key);
           if (localVal) {
             pushToCloud(key, localVal, clientKey);
           }
         }
-        // Para contas de clientes novos: nunca sobe resíduos de outros usuários! Começa limpo.
       }
     }, (err) => {
       console.error(`Firebase snapshot error for ${cloudDocId}:`, err);
@@ -140,7 +131,15 @@ window.addEventListener('focus', () => {
   }
 });
 window.addEventListener('storage', (e) => {
-  if (e.key === 'profinance_saved_client_key' || e.key === 'profinance_active_scope') {
-    initFirebaseSync();
+  const scope = typeof window !== 'undefined' && typeof window.getActiveUserScope === 'function'
+    ? window.getActiveUserScope()
+    : null;
+  if (!scope || scope === 'unauthenticated') return;
+  const expectedPrefix = `${scope}_`;
+  if (e.key && e.key.startsWith(expectedPrefix)) {
+    const rawKey = e.key.substring(expectedPrefix.length);
+    if (SYNC_KEYS.includes(rawKey)) {
+      window.dispatchEvent(new CustomEvent('cloudSyncUpdate', { detail: rawKey }));
+    }
   }
 });
