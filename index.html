@@ -6844,25 +6844,52 @@ Qualquer dúvida ou suporte, estou à disposição! 💼📊`;
     function syncRecurringBillsAcrossMonths(monthsAhead = 12) {
         if (!transactions || !Array.isArray(transactions)) return;
         
-        // Identifica modelos únicos de contas fixas recorrentes
-        const seen = new Set();
-        const uniqueTemplates = [];
+        const prof = typeof currentProfile !== 'undefined' ? currentProfile : 'personal';
+
+        // 1. Identifica modelos únicos de contas fixas recorrentes pelo nome e valor
+        const templateMap = new Map();
         transactions.forEach(t => {
             if (!t.isRecurring || !t.date) return;
-            if ((t.profile || 'personal') !== (typeof currentProfile !== 'undefined' ? currentProfile : 'personal')) return;
-            const parts = t.date.split('-');
-            const day = parts[2] || '01';
-            const name = (t.desc || t.category || '').trim().toLowerCase();
-            const key = (t.type || 'expense') + '_' + name + '_' + Number(t.amount) + '_' + day;
-            if (!seen.has(key)) {
-                seen.add(key);
-                uniqueTemplates.push(t);
+            if ((t.profile || 'personal') !== prof) return;
+            const name = (t.desc || t.category || '').replace(/[\p{Emoji}\u200d]+/gu, '').trim().toLowerCase();
+            const key = (t.type || 'expense') + '_' + name + '_' + Number(t.amount);
+            const day = parseInt(t.date.split('-')[2], 10) || 1;
+
+            if (!templateMap.has(key)) {
+                templateMap.set(key, { bill: t, maxDay: day });
+            } else {
+                const item = templateMap.get(key);
+                if (day > item.maxDay) {
+                    item.maxDay = day;
+                }
             }
         });
 
-        if (uniqueTemplates.length === 0) return;
+        if (templateMap.size === 0) return;
 
         let hasChanges = false;
+
+        // Auto-limpeza preventiva: se já houver lançamentos duplicados da mesma conta fixa no mesmo mês, remove as duplicatas
+        const seenInMonth = new Set();
+        const cleanedTransactions = [];
+        transactions.forEach(t => {
+            if (t.isRecurring && t.date && (t.profile || 'personal') === prof) {
+                const mStr = t.date.slice(0, 7);
+                const name = (t.desc || t.category || '').replace(/[\p{Emoji}\u200d]+/gu, '').trim().toLowerCase();
+                const key = mStr + '_' + (t.type || 'expense') + '_' + name + '_' + Number(t.amount);
+                if (seenInMonth.has(key)) {
+                    hasChanges = true;
+                    return; // Remove transação duplicada no mesmo mês!
+                }
+                seenInMonth.add(key);
+            }
+            cleanedTransactions.push(t);
+        });
+
+        if (hasChanges) {
+            transactions = cleanedTransactions;
+        }
+
         const today = new Date();
         const curYear = today.getFullYear();
         const curMonth = today.getMonth();
@@ -6882,19 +6909,18 @@ Qualquer dúvida ou suporte, estou à disposição! 💼📊`;
             const [tY, tM] = mStr.split('-').map(Number);
             const maxDays = new Date(tY, tM, 0).getDate();
 
-            uniqueTemplates.forEach(bill => {
-                const billName = (bill.desc || bill.category || '').trim().toLowerCase();
-                const originalDay = parseInt(bill.date.split('-')[2], 10) || 1;
-                const targetDay = Math.min(originalDay, maxDays).toString().padStart(2, '0');
+            templateMap.forEach(({ bill, maxDay }) => {
+                const billName = (bill.desc || bill.category || '').replace(/[\p{Emoji}\u200d]+/gu, '').trim().toLowerCase();
+                const targetDay = Math.min(maxDay, maxDays).toString().padStart(2, '0');
                 const targetDate = `${mStr}-${targetDay}`;
 
+                // Se já existir QUALQUER lançamento desta conta fixa neste mês, NÃO DUPLICA
                 const exists = transactions.some(t => {
                     if ((t.profile || 'personal') !== (bill.profile || 'personal')) return false;
                     if (t.type !== bill.type || !t.isRecurring) return false;
                     if (!t.date || !t.date.startsWith(mStr)) return false;
-                    const tName = (t.desc || t.category || '').trim().toLowerCase();
-                    const tDay = parseInt(t.date.split('-')[2], 10);
-                    return tName === billName && Math.abs(Number(t.amount) - Number(bill.amount)) < 0.01 && tDay === parseInt(targetDay, 10);
+                    const tName = (t.desc || t.category || '').replace(/[\p{Emoji}\u200d]+/gu, '').trim().toLowerCase();
+                    return tName === billName && Math.abs(Number(t.amount) - Number(bill.amount)) < 0.01;
                 });
 
                 if (!exists) {
@@ -6909,7 +6935,7 @@ Qualquer dúvida ou suporte, estou à disposição! 💼📊`;
                         amount: bill.amount,
                         installments: 1,
                         isRecurring: true,
-                        profile: bill.profile || (typeof currentProfile !== 'undefined' ? currentProfile : 'personal')
+                        profile: bill.profile || prof
                     });
                     hasChanges = true;
                 }
@@ -8224,7 +8250,8 @@ function renderFixedBillsGrid() {
             const seen = new Set();
             allFixed.forEach(t => {
                 if(!t.date) return;
-                const key = (t.desc || t.category) + '_' + t.amount + '_' + t.date.split('-')[2];
+                const name = (t.desc || t.category || '').replace(/[\p{Emoji}\u200d]+/gu, '').trim().toLowerCase();
+                const key = name + '_' + Number(t.amount);
                 if(!seen.has(key)) { seen.add(key); fixedBills.push(t); }
             });
         }
@@ -8292,24 +8319,23 @@ window.renderFixedBillsGrid = renderFixedBillsGrid;
 
 function deleteFixedBill(name, amount, day) {
     const formattedAmount = typeof formatCurrency === 'function' ? formatCurrency(amount) : 'R$ ' + Number(amount).toFixed(2).replace('.', ',');
-    const msgConfirm = `Deseja realmente EXCLUIR a conta fixa "${name}" (${formattedAmount} - Todo dia ${day})?\n\nIsso removerá a recorrência desta conta das suas Contas Fixas.`;
+    const msgConfirm = `Deseja realmente EXCLUIR a conta fixa "${name}" (${formattedAmount})?\n\nIsso removerá esta conta fixa e todas as suas recorrências em todos os meses.`;
     
     if (!confirm(msgConfirm)) {
         return;
     }
 
-    const dayStr = String(day).padStart(2, '0');
-    const beforeCount = transactions.length;
+    const nClean = (name || '').replace(/[\p{Emoji}\u200d]+/gu, '').trim().toLowerCase();
+    const amtNum = Number(amount);
 
-    // Remove as transações que correspondem a essa conta fixa recorrente
+    // Remove as transações que correspondem a essa conta fixa recorrente em qualquer dia ou mês
     transactions = transactions.filter(t => {
         if (!t.isRecurring || t.type !== 'expense') return true;
-        const tDay = t.date ? t.date.split('-')[2] : '';
-        const tName = t.desc || (t.category ? t.category.replace(/[\p{Emoji}\u200d]+/gu, '').trim() : '') || 'Conta Fixa';
+        const tDesc = (t.desc || '').replace(/[\p{Emoji}\u200d]+/gu, '').trim().toLowerCase();
+        const tCat = (t.category ? t.category.replace(/[\p{Emoji}\u200d]+/gu, '').trim() : '').toLowerCase();
         
-        const isMatch = (tName === name || t.desc === name || (t.category && t.category.includes(name))) &&
-                        Number(t.amount) === Number(amount) &&
-                        tDay === dayStr;
+        const isMatch = (tDesc === nClean || tCat === nClean || tDesc.includes(nClean) || nClean.includes(tDesc)) &&
+                        Math.abs(Number(t.amount) - amtNum) < 0.01;
         return !isMatch;
     });
 
@@ -8327,7 +8353,7 @@ function deleteFixedBill(name, amount, day) {
         }
     }
 
-    showToast(`🗑️ Conta fixa "${name}" excluída com sucesso!`);
+    showToast(`🗑️ Conta fixa "${name}" excluída com sucesso de todos os meses!`);
 }
 window.deleteFixedBill = deleteFixedBill;
 
@@ -8422,23 +8448,32 @@ function requestNotificationPermission() {
 }
 
 function getUniqueFixedBills() {
-    if (!transactions) return [];
+    if (!transactions || !Array.isArray(transactions)) return [];
+    const prof = typeof currentProfile !== 'undefined' ? currentProfile : 'personal';
     const allFixed = transactions.filter(t => 
-        (t.profile || 'personal') === currentProfile && 
+        (t.profile || 'personal') === prof && 
         t.type === 'expense' && 
         t.isRecurring === true
     );
-    const unique = [];
-    const seen = new Set();
+    const uniqueMap = new Map();
     allFixed.forEach(t => {
         if (!t.date) return;
-        const key = (t.desc || t.category) + '_' + t.amount + '_' + t.date.split('-')[2];
-        if(!seen.has(key)) {
-            seen.add(key);
-            unique.push(t);
+        const name = (t.desc || t.category || '').replace(/[\p{Emoji}\u200d]+/gu, '').trim().toLowerCase();
+        const key = name + '_' + Number(t.amount);
+        const day = parseInt(t.date.split('-')[2], 10) || 1;
+        
+        if (!uniqueMap.has(key)) {
+            uniqueMap.set(key, { ...t, bestDay: day });
+        } else {
+            const existing = uniqueMap.get(key);
+            if (day > existing.bestDay) {
+                existing.bestDay = day;
+                const parts = existing.date.split('-');
+                existing.date = `${parts[0]}-${parts[1]}-${String(day).padStart(2, '0')}`;
+            }
         }
     });
-    return unique;
+    return Array.from(uniqueMap.values());
 }
 
 function checkDueFixedBills() {
