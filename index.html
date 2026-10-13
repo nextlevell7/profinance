@@ -2772,7 +2772,7 @@ window.onerror = function(msg, url, line, col, error) {
             <!-- MODO DUPLO -->
 <div style="display:inline-flex;background:var(--bg-elevated);border-radius:8px;padding:2px;border:1px solid var(--border-color);margin-right:10px;">
 <button type="button" id="btn-prof-personal" onclick="window.setProfile('personal')" style="background:#8B5CF6;color:white;border:none;padding:4px 10px;border-radius:6px;font-size:0.75rem;font-weight:bold;cursor:pointer;transition:0.2s;">👤 Pessoal</button>
-<button type="button" id="btn-prof-business" onclick="window.location.href='business.html'" style="background:transparent;color:var(--text-secondary);border:none;padding:4px 10px;border-radius:6px;font-size:0.75rem;font-weight:bold;cursor:pointer;transition:0.2s;">🏢 Empresa</button>
+<button type="button" id="btn-prof-business" onclick="localStorage.setItem('profinance_profile', 'business'); window.location.href='business.html';" style="background:transparent;color:var(--text-secondary);border:none;padding:4px 10px;border-radius:6px;font-size:0.75rem;font-weight:bold;cursor:pointer;transition:0.2s;">🏢 Empresa</button>
 </div>
 <!-- Botão Sair / Bloquear Sessão -->
             <button type="button" class="btn-toolbar" id="btn-logout" onclick="handleLogout()" title="Bloquear e sair do sistema" style="color: #F87171;">
