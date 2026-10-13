@@ -1,10 +1,10 @@
-﻿self.addEventListener('push', function(event) {
+self.addEventListener('push', function(event) {
     const data = event.data ? event.data.json() : { title: 'Lembrete ProFinance', body: 'Você tem contas a vencer!' };
     
     const options = {
         body: data.body,
-        icon: 'https://profinance-ten.vercel.app/favicon.ico',
-        badge: 'https://profinance-ten.vercel.app/favicon.ico',
+        icon: 'https://profinance-nine.vercel.app/favicon.ico',
+        badge: 'https://profinance-nine.vercel.app/favicon.ico',
         vibrate: [200, 100, 200],
         data: { url: data.url || '/' }
     };

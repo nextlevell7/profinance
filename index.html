@@ -3309,7 +3309,7 @@ window.onerror = function(msg, url, line, col, error) {
                     <span style="font-size: 0.75rem; color: var(--text-muted);">Esta chave sai pronta nas mensagens automáticas de cobrança do WhatsApp.</span>
                 </div>
                 <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
-                    <input type="text" id="admin-pix-key" placeholder="03779104229 (CPF) ou outro Pix..." style="flex: 1; min-width: 240px;">
+                    <input type="text" id="admin-pix-key" placeholder="03779104229, seu e-mail ou chave Pix..." style="flex: 1; min-width: 240px;">
                     <button type="button" class="btn-toolbar" onclick="saveAdminPixKey()" style="background: #064E3B; border-color: #10B981; color: #A7F3D0; padding: 0.75rem 1.25rem; font-weight: 700;">
                         💾 Salvar Chave Pix
                     </button>
@@ -3847,7 +3847,7 @@ window.onerror = function(msg, url, line, col, error) {
         if (!adminToken) {
             throw new Error('Acesso negado: Autenticação de Administrador Master necessária.');
         }
-        const res = await fetch((window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' ? 'https://profinance-ten.vercel.app' : '') + '/api/crm', {
+        const res = await fetch((window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' ? 'https://profinance-nine.vercel.app' : '') + '/api/crm', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -4229,7 +4229,7 @@ window.onerror = function(msg, url, line, col, error) {
                 try {
                     const adminToken = sessionStorage.getItem('profinance_admin_pass');
                     if (adminToken) {
-                        const pushRes = await fetch((window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' ? 'https://profinance-ten.vercel.app' : '') + '/api/crm', {
+                        const pushRes = await fetch((window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' ? 'https://profinance-nine.vercel.app' : '') + '/api/crm', {
                             method: 'POST',
                             headers: { 
                                 'Content-Type': 'application/json',
@@ -4256,7 +4256,7 @@ window.onerror = function(msg, url, line, col, error) {
                 try {
                     const adminToken = sessionStorage.getItem('profinance_admin_pass');
                     if (adminToken) {
-                        const netlifyRes = await fetch((window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' ? 'https://profinance-ten.vercel.app' : '') + '/api/crm', {
+                        const netlifyRes = await fetch((window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' ? 'https://profinance-nine.vercel.app' : '') + '/api/crm', {
                             cache: 'no-store',
                             headers: {
                                 'Authorization': `Bearer ${adminToken}`
@@ -4721,7 +4721,7 @@ window.onerror = function(msg, url, line, col, error) {
             // 1. Validação centralizada no servidor Netlify (sincroniza PC e Celular)
             let serverResponded = false;
             try {
-                const res = await fetch((window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' ? 'https://profinance-ten.vercel.app' : '') + '/api/crm', {
+                const res = await fetch((window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' ? 'https://profinance-nine.vercel.app' : '') + '/api/crm', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -4933,7 +4933,7 @@ window.onerror = function(msg, url, line, col, error) {
                     }
                     let isSessionValid = false;
                     try {
-                        const checkRes = await fetch((window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' ? 'https://profinance-ten.vercel.app' : '') + '/api/crm', {
+                        const checkRes = await fetch((window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' ? 'https://profinance-nine.vercel.app' : '') + '/api/crm', {
                             method: 'POST',
                             headers: {
                                 'Content-Type': 'application/json',
@@ -5308,9 +5308,9 @@ Para manter seu painel ativo sem nenhuma interrupção, garanta sua renovação:
 • *Anual (Recomendado):* R$ 247,00 *(Economize R$ 231 no ano!)*
 
 💳 *Pagamento via Pix:*
-Chave Pix (CPF): *${adminPix}* (Matheus Brito)
+Chave Pix: *${adminPix}* (Matheus Brito)
 
-🌐 *Link de Acesso:* https://profinance-ten.vercel.app/
+🌐 *Link de Acesso:* https://profinance-nine.vercel.app/
 
 📲 Após efetuar o Pix, envie o comprovante por aqui para continuarmos com seu acesso liberado! 🚀`;
         } else if (type === 'expired') {
@@ -5327,9 +5327,9 @@ Para reativar seu acesso instantaneamente e não perder o controle das suas fina
 • *Plano Anual:* R$ 247,00 *(Melhor Custo-Benefício)*
 
 💳 *Chave Pix para Pagamento:*
-Chave Pix (CPF): *${adminPix}* (Matheus Brito)
+Chave Pix: *${adminPix}* (Matheus Brito)
 
-🌐 *Link de Acesso:* https://profinance-ten.vercel.app/
+🌐 *Link de Acesso:* https://profinance-nine.vercel.app/
 
 Me avise assim que realizar o pagamento para liberarmos seu novo acesso na hora! ⚡`;
         } else {
@@ -5342,7 +5342,7 @@ Olá, *${lic.holder}*! Seja muito bem-vindo ao *ProFinance* — sua plataforma d
 ${lic.key}
 
 📅 *Validade:* ${expDateStr}
-🌐 *Link de Acesso:* https://profinance-ten.vercel.app/
+🌐 *Link de Acesso:* https://profinance-nine.vercel.app/
 
 *Como Entrar:*
 1️⃣ Acesse o link acima.
@@ -5812,7 +5812,7 @@ Qualquer dúvida ou suporte, estou à disposição! 💼📊`;
 
         // Sincroniza a nova senha imediatamente com o servidor Netlify (autorizado com a senha atual)
         try {
-            const updRes = await fetch((window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' ? 'https://profinance-ten.vercel.app' : '') + '/api/crm', {
+            const updRes = await fetch((window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' ? 'https://profinance-nine.vercel.app' : '') + '/api/crm', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -8320,7 +8320,7 @@ function checkDueFixedBills() {
                 let msg = a.days === 0 ? 'Vence HOJE!' : `Vence em ${a.days} dias.`;
                 registration.showNotification('⚠️ ProFinance: Conta a Pagar', {
                     body: `${a.desc} (R$ ${a.amount}) ${msg}`,
-                    icon: 'https://profinance-ten.vercel.app/favicon.ico',
+                    icon: 'https://profinance-nine.vercel.app/favicon.ico',
                     vibrate: [200, 100, 200]
                 });
             });

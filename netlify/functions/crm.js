@@ -133,11 +133,12 @@ exports.handler = async function(event, context) {
   const reqOrigin = event.headers["origin"] || event.headers["Origin"] || "";
   const allowedOrigins = [
     "https://profinancemax.netlify.app",
+    "https://profinance-nine.vercel.app",
     "http://localhost:8888",
     "http://127.0.0.1:5500",
     "http://localhost:3000"
   ];
-  const corsOrigin = allowedOrigins.includes(reqOrigin) ? reqOrigin : "https://profinancemax.netlify.app";
+  const corsOrigin = allowedOrigins.includes(reqOrigin) ? reqOrigin : "https://profinance-nine.vercel.app";
 
   const headers = {
     "Access-Control-Allow-Origin": corsOrigin,

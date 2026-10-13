@@ -1,0 +1,14 @@
+node_modules/
+*.log
+*_backup*
+temp*.js
+old*.txt
+new*.txt
+extract.txt
+full_business.txt
+verify.txt
+patch*
+scan_errors.js
+syntax_check.js
+debug.js
+test_*.html
