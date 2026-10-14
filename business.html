@@ -358,6 +358,285 @@ window.getActiveUserScope = getActiveUserScope;
                   grid-template-columns: 1fr !important;
               }
           }
+
+        /* =======================================================
+           POPUP ANIMADO DE SUCESSO DE LANÇAMENTO (RECEITA / DESPESA)
+           ======================================================= */
+        #tx-success-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(4, 7, 14, 0.78);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            z-index: 100000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 16px;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        #tx-success-overlay.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        #tx-success-card {
+            background: linear-gradient(160deg, #131B2E 0%, #090E1A 100%);
+            border-radius: 26px;
+            max-width: 380px;
+            width: 100%;
+            padding: 30px 24px 22px 24px;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+            transform: scale(0.65) translateY(30px);
+            transition: transform 0.38s cubic-bezier(0.34, 1.56, 0.64, 1);
+            box-shadow: 0 25px 60px rgba(0, 0, 0, 0.85);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        #tx-success-overlay.active #tx-success-card {
+            transform: scale(1) translateY(0);
+        }
+
+        #tx-success-card.card-income {
+            border-color: rgba(16, 185, 129, 0.45);
+            box-shadow: 0 25px 60px rgba(0, 0, 0, 0.85), 0 0 45px rgba(16, 185, 129, 0.28);
+        }
+        #tx-success-card.card-expense {
+            border-color: rgba(239, 68, 68, 0.45);
+            box-shadow: 0 25px 60px rgba(0, 0, 0, 0.85), 0 0 45px rgba(239, 68, 68, 0.28);
+        }
+
+        .btn-close-tx-popup {
+            position: absolute;
+            top: 14px;
+            right: 14px;
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            color: #94A3B8;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .btn-close-tx-popup:hover {
+            background: rgba(255, 255, 255, 0.18);
+            color: #FFFFFF;
+        }
+
+        .tx-popup-icon-container {
+            position: relative;
+            width: 72px;
+            height: 72px;
+            margin: 0 auto 14px auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .tx-popup-badge {
+            width: 66px;
+            height: 66px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #FFFFFF;
+            animation: bounceInBadge 0.65s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+            position: relative;
+            z-index: 2;
+        }
+        .tx-popup-badge.badge-income {
+            background: linear-gradient(135deg, #10B981 0%, #059669 100%);
+            box-shadow: 0 0 30px rgba(16, 185, 129, 0.65);
+        }
+        .tx-popup-badge.badge-expense {
+            background: linear-gradient(135deg, #EF4444 0%, #DC2626 100%);
+            box-shadow: 0 0 30px rgba(239, 68, 68, 0.65);
+        }
+
+        .tx-popup-badge svg {
+            width: 36px;
+            height: 36px;
+            stroke-dasharray: 50;
+            stroke-dashoffset: 50;
+            animation: strokeCheck 0.5s 0.22s cubic-bezier(0.65, 0, 0.45, 1) forwards;
+        }
+
+        @keyframes strokeCheck {
+            to { stroke-dashoffset: 0; }
+        }
+
+        @keyframes bounceInBadge {
+            0% { transform: scale(0.2); opacity: 0; }
+            60% { transform: scale(1.18); opacity: 1; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        .tx-particle {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--bg);
+            pointer-events: none;
+            z-index: 1;
+            animation: burstParticle 0.75s ease-out forwards;
+        }
+
+        @keyframes burstParticle {
+            0% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+            100% { transform: translate(calc(-50% + var(--tx)), calc(-50% + var(--ty))) scale(0); opacity: 0; }
+        }
+
+        .tx-popup-tag {
+            display: inline-block;
+            font-size: 0.72rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            padding: 3px 12px;
+            border-radius: 999px;
+            margin-bottom: 6px;
+        }
+        .tx-popup-tag.tag-income {
+            background: rgba(16, 185, 129, 0.15);
+            color: #34D399;
+            border: 1px solid rgba(16, 185, 129, 0.35);
+        }
+        .tx-popup-tag.tag-expense {
+            background: rgba(239, 68, 68, 0.15);
+            color: #F87171;
+            border: 1px solid rgba(239, 68, 68, 0.35);
+        }
+
+        .tx-popup-title {
+            font-size: 1.2rem;
+            font-weight: 800;
+            color: #FFFFFF;
+            letter-spacing: -0.3px;
+            margin-bottom: 6px;
+        }
+
+        .tx-popup-amount {
+            font-size: 2.2rem;
+            font-weight: 900;
+            line-height: 1.1;
+            margin-bottom: 8px;
+            letter-spacing: -0.5px;
+            font-family: 'Space Grotesk', var(--font-main);
+        }
+        .tx-popup-amount.amt-income {
+            color: #10B981;
+            text-shadow: 0 0 25px rgba(16, 185, 129, 0.4);
+        }
+        .tx-popup-amount.amt-expense {
+            color: #EF4444;
+            text-shadow: 0 0 25px rgba(239, 68, 68, 0.4);
+        }
+
+        .tx-popup-desc {
+            font-size: 0.95rem;
+            font-weight: 600;
+            color: #E2E8F0;
+            margin-bottom: 16px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            padding: 0 10px;
+        }
+
+        .tx-popup-meta-grid {
+            background: rgba(15, 23, 42, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 14px;
+            padding: 12px 14px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px 12px;
+            text-align: left;
+            margin-bottom: 18px;
+        }
+
+        .tx-meta-item {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            min-width: 0;
+        }
+
+        .tx-meta-label {
+            font-size: 0.68rem;
+            color: #64748B;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+
+        .tx-meta-val {
+            font-size: 0.85rem;
+            color: #CBD5E1;
+            font-weight: 600;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .btn-tx-popup-confirm {
+            width: 100%;
+            padding: 13px;
+            border-radius: 12px;
+            border: none;
+            color: #FFFFFF;
+            font-size: 0.95rem;
+            font-weight: 800;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .btn-tx-popup-confirm.btn-income {
+            background: linear-gradient(135deg, #10B981 0%, #059669 100%);
+            box-shadow: 0 4px 15px rgba(16, 185, 129, 0.35);
+        }
+        .btn-tx-popup-confirm.btn-income:hover {
+            box-shadow: 0 6px 20px rgba(16, 185, 129, 0.5);
+            transform: translateY(-1px);
+        }
+        .btn-tx-popup-confirm.btn-expense {
+            background: linear-gradient(135deg, #EF4444 0%, #DC2626 100%);
+            box-shadow: 0 4px 15px rgba(239, 68, 68, 0.35);
+        }
+        .btn-tx-popup-confirm.btn-expense:hover {
+            box-shadow: 0 6px 20px rgba(239, 68, 68, 0.5);
+            transform: translateY(-1px);
+        }
+
+        .tx-popup-progress-track {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 3px;
+            background: rgba(255, 255, 255, 0.08);
+            overflow: hidden;
+        }
+        .tx-popup-progress-bar {
+            height: 100%;
+            width: 100%;
+            background: rgba(255, 255, 255, 0.4);
+            animation: progressBarDismiss 3.2s linear forwards;
+        }
+        @keyframes progressBarDismiss {
+            0% { width: 100%; }
+            100% { width: 0%; }
+        }
     </style>
 </head>
 <body>
@@ -990,6 +1269,15 @@ window.getActiveUserScope = getActiveUserScope;
                     allTxs[txIndex].status = document.getElementById('b-status').value;
                 }
                 showToast('Lançamento atualizado com sucesso!', 'success');
+                showTransactionSuccessPopup({
+                    type: typeInput,
+                    amount: valInput,
+                    desc: document.getElementById('b-desc').value,
+                    category: document.getElementById('b-cat').value,
+                    origin: 'Conta Empresarial',
+                    date: dateInput,
+                    isEdit: true
+                });
             } else {
                 const iterations = isRecurring ? 12 : 1;
                 const baseDateParts = dateInput.split('-');
@@ -1037,6 +1325,16 @@ window.getActiveUserScope = getActiveUserScope;
                     }
                 }
                 showToast(isRecurring ? 'Recorrência gerada com sucesso!' : 'Lançamento registrado!', 'success');
+                showTransactionSuccessPopup({
+                    type: typeInput,
+                    amount: valInput,
+                    desc: document.getElementById('b-desc').value,
+                    category: document.getElementById('b-cat').value,
+                    origin: 'Conta Empresarial',
+                    date: dateInput,
+                    isRecurring: isRecurring,
+                    isEdit: false
+                });
             }
             saveSafeTxs(allTxs);
             closeModal();
@@ -1482,6 +1780,154 @@ window.getActiveUserScope = getActiveUserScope;
                 renderERP();
             }
         }
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+
+        function playTransactionChime(isIncome) {
+            try {
+                const AudioContext = window.AudioContext || window.webkitAudioContext;
+                if (!AudioContext) return;
+                const ctx = new AudioContext();
+                if (ctx.state === 'suspended') ctx.resume();
+                const now = ctx.currentTime;
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.type = 'sine';
+                
+                if (isIncome) {
+                    osc.frequency.setValueAtTime(523.25, now);
+                    osc.frequency.exponentialRampToValueAtTime(659.25, now + 0.1);
+                    osc.frequency.exponentialRampToValueAtTime(783.99, now + 0.22);
+                } else {
+                    osc.frequency.setValueAtTime(440.00, now);
+                    osc.frequency.exponentialRampToValueAtTime(554.37, now + 0.1);
+                    osc.frequency.exponentialRampToValueAtTime(659.25, now + 0.22);
+                }
+                
+                gain.gain.setValueAtTime(0.08, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.32);
+                
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                
+                osc.start(now);
+                osc.stop(now + 0.32);
+            } catch(e) {}
+        }
+
+        let txPopupTimer = null;
+        function showTransactionSuccessPopup({ type, amount, desc, category, origin, date, installments, isRecurring, isEdit }) {
+            let overlay = document.getElementById('tx-success-overlay');
+            if (!overlay) {
+                overlay = document.createElement('div');
+                overlay.id = 'tx-success-overlay';
+                overlay.onclick = function(e) {
+                    if (e.target === overlay) closeTransactionSuccessPopup();
+                };
+                document.body.appendChild(overlay);
+            }
+
+            const isIncome = type === 'income';
+            const formattedAmount = 'R$ ' + (typeof formatBRL === 'function' ? formatBRL(amount) : Number(amount || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
+            const dateFormatted = date ? date.split('-').reverse().join('/') : new Date().toLocaleDateString('pt-BR');
+            const titleText = isEdit 
+                ? (isIncome ? 'RECEITA ATUALIZADA!' : 'DESPESA ATUALIZADA!')
+                : (isIncome ? 'RECEITA REGISTRADA!' : 'DESPESA REGISTRADA!');
+            
+            let tagText = isIncome ? 'Entrada Empresarial' : 'Saída / Pagamento PJ';
+            if (installments && installments > 1 && !isIncome) {
+                tagText = `Compra Parcelada (${installments}x)`;
+            } else if (isRecurring) {
+                tagText = 'Recorrência Anual (12x)';
+            }
+
+            // Gera partículas coloridas dinâmicas
+            let particlesHtml = '';
+            for (let i = 0; i < 12; i++) {
+                const angle = (i / 12) * 2 * Math.PI;
+                const dist = 48 + Math.random() * 32;
+                const tx = (Math.cos(angle) * dist).toFixed(1) + 'px';
+                const ty = (Math.sin(angle) * dist).toFixed(1) + 'px';
+                const color = isIncome ? ['#10B981', '#34D399', '#6EE7B7', '#FBBF24'][i % 4] : ['#EF4444', '#F87171', '#FCA5A5', '#F59E0B'][i % 4];
+                particlesHtml += `<span class="tx-particle" style="--tx: ${tx}; --ty: ${ty}; --bg: ${color}; animation-delay: ${(i * 0.02).toFixed(2)}s;"></span>`;
+            }
+
+            overlay.innerHTML = `
+                <div id="tx-success-card" class="${isIncome ? 'card-income' : 'card-expense'}">
+                    <button type="button" class="btn-close-tx-popup" onclick="closeTransactionSuccessPopup()" title="Fechar">✕</button>
+                    
+                    <div class="tx-popup-icon-container">
+                        ${particlesHtml}
+                        <div class="tx-popup-badge ${isIncome ? 'badge-income' : 'badge-expense'}">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round">
+                                <polyline points="20 6 9 17 4 12"></polyline>
+                            </svg>
+                        </div>
+                    </div>
+
+                    <div class="tx-popup-tag ${isIncome ? 'tag-income' : 'tag-expense'}">${escapeHtml(tagText)}</div>
+                    <h3 class="tx-popup-title">${escapeHtml(titleText)}</h3>
+                    
+                    <div class="tx-popup-amount ${isIncome ? 'amt-income' : 'amt-expense'}">
+                        ${isIncome ? '+' : '-'} ${formattedAmount}
+                    </div>
+
+                    ${desc ? `<div class="tx-popup-desc" title="${escapeHtml(desc)}">${escapeHtml(desc)}</div>` : ''}
+
+                    <div class="tx-popup-meta-grid">
+                        <div class="tx-meta-item">
+                            <span class="tx-meta-label">Categoria</span>
+                            <span class="tx-meta-val">${escapeHtml(category || 'Geral')}</span>
+                        </div>
+                        <div class="tx-meta-item">
+                            <span class="tx-meta-label">Origem</span>
+                            <span class="tx-meta-val">${escapeHtml(origin || 'Conta Empresarial')}</span>
+                        </div>
+                        <div class="tx-meta-item" style="grid-column: 1 / -1;">
+                            <span class="tx-meta-label">Data</span>
+                            <span class="tx-meta-val">${escapeHtml(dateFormatted)}</span>
+                        </div>
+                    </div>
+
+                    <button type="button" class="btn-tx-popup-confirm ${isIncome ? 'btn-income' : 'btn-expense'}" onclick="closeTransactionSuccessPopup()">
+                        Entendido 👍
+                    </button>
+
+                    <div class="tx-popup-progress-track">
+                        <div class="tx-popup-progress-bar"></div>
+                    </div>
+                </div>
+            `;
+
+            requestAnimationFrame(() => {
+                overlay.classList.add('active');
+            });
+
+            playTransactionChime(isIncome);
+
+            clearTimeout(txPopupTimer);
+            txPopupTimer = setTimeout(() => {
+                closeTransactionSuccessPopup();
+            }, 3200);
+        }
+        window.showTransactionSuccessPopup = showTransactionSuccessPopup;
+
+        function closeTransactionSuccessPopup() {
+            const overlay = document.getElementById('tx-success-overlay');
+            if (overlay) {
+                overlay.classList.remove('active');
+                clearTimeout(txPopupTimer);
+            }
+        }
+        window.closeTransactionSuccessPopup = closeTransactionSuccessPopup;
 
         function showToast(message, type = 'success') {
             const container = document.getElementById('toast-container');
