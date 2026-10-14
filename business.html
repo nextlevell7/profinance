@@ -2002,46 +2002,168 @@ window.getActiveUserScope = getActiveUserScope;
 
         function parseBusinessVoice(text) {
             const t = text.toLowerCase();
+            const normT = text.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
             let type = 'expense';
             let amount = 0;
             let category = 'Outros';
 
-            if (t.match(/\b(receb|ganh|vendi|venda|entrou|pagaram)\b/)) type = 'income';
-            else if (t.match(/\b(gastei|paguei|comprei|tirei|transferi|custou)\b/)) type = 'expense';
+            // --- CLASSIFICAÇÃO INTELIGENTE DE TIPO (RECEITA VS DESPESA) ---
+            // Cobre: entrou, recebi, ganhei, caiu, depositaram, transferiram, mandaram, enviaram, lucrei, rendeu, faturei, vendi, salário, comissão, etc.
+            const incomePattern = new RegExp(
+                [
+                    '\\b(receb(?:i|eu|emos|eram|endo|imento|imentos|a)?)\\b',
+                    '\\b(ganh(?:ei|ou|amos|aram|ando|o|os)?)\\b',
+                    '\\b(lucr(?:ei|ou|amos|aram|ando|o|os)?)\\b',
+                    '\\b(rend(?:eu|e|em|endo|imento|imentos)?)\\b',
+                    '\\b(fatur(?:ei|ou|amos|aram|ando|amento)?)\\b',
+                    '\\b(vend(?:i|eu|emos|eram|a|as|endo|ido)?)\\b',
+                    '\\b(entrou|entrando|entrada|entradas)\\b',
+                    '\\b(caiu|cairam|caem|caindo)\\b',
+                    '\\b(depositaram|depositou|depositado|deposito|depositos)\\b',
+                    '\\b(transferiram|transferiu|creditou|creditado)\\b',
+                    '\\b(mandaram|enviaram)\\b',
+                    '\\b(me\\s+(?:mandou|mandaram|enviou|enviaram|passou|transferiu|transferiram|pagou|pagaram))\\b',
+                    '\\b(pagaram|recebemos|recebido)\\b',
+                    '\\b(salario|salarios|pro\\s*labore|contra\\s*cheque|holerite|remuneracao)\\b',
+                    '\\b(comissao|comissoes|bonificacao|bonus|gorjeta|dividendos?|proventos?|restituicao)\\b',
+                    '\\b(?:pix\\s+recebido|recebi\\s+(?:um\\s+)?pix|caiu\\s+(?:um\\s+)?pix|fizeram\\s+(?:um\\s+)?pix|mandaram\\s+(?:um\\s+)?pix)\\b'
+                ].join('|'),
+                'i'
+            );
 
-            let strVal = t.replace(/reais|real/g, ',')
-                          .replace(/e\s+\d+\s+centavos?/g, match => match.replace(/\D/g, ''))
-                          .replace(/centavos?/g, '')
-                          .replace(/\s+/g, '');
-            const matchNum = strVal.match(/(\d+([.,]\d+)?)/);
-            if (matchNum) amount = parseFloat(matchNum[1].replace(',', '.'));
+            const expensePattern = new RegExp(
+                [
+                    '\\b(gastei|gastou|gastamos|gastando|gasto|gastos)\\b',
+                    '\\b(paguei|pagou|pagamos|pagando)\\b',
+                    '\\b(comprei|comprou|compramos|comprando|compra|compras)\\b',
+                    '\\b(transferi|enviei|mandei)\\b',
+                    '\\b(tirei|saquei|sacar|saque)\\b',
+                    '\\b(custou|custaram|custo|custos)\\b',
+                    '\\b(saiu|saindo|saida|saidas)\\b',
+                    '\\b(quitei|quite|quitando|desembolsei)\\b',
+                    '\\b(perdi|perdeu|prejuizo)\\b'
+                ].join('|'),
+                'i'
+            );
 
-            if (t.match(/marketing|anúncio|propaganda/i)) category = 'Marketing';
-            else if (t.match(/imposto|taxa|darf|das/i)) category = 'Impostos';
-            else if (t.match(/fornecedor|material|estoque/i)) category = 'Fornecedores';
-            else if (t.match(/folha|salário|funcionário/i)) category = 'Folha';
-            else if (t.match(/venda|cliente/i)) category = 'Vendas';
-            else if (t.match(/operacional|luz|água|aluguel|internet|sistema/i)) category = 'Operacional';
+            const incIndex = normT.search(incomePattern);
+            const expIndex = normT.search(expensePattern);
 
-            let desc = text;
-            const empMatch = text.match(/(?:com a|com o|da|do|para a|para o|no|na)\s+([a-zA-Z\u00C0-\u00FF\s]+)/);
-            if (empMatch && empMatch[1].trim().length > 0) {
-                desc = empMatch[1].replace(/(reais|mil|gastei|paguei|comprei|recebi)/ig, '').trim();
+            if (incIndex !== -1 && expIndex === -1) type = 'income';
+            else if (expIndex !== -1 && incIndex === -1) type = 'expense';
+            else if (incIndex !== -1 && expIndex !== -1) type = incIndex < expIndex ? 'income' : 'expense';
+
+            // --- EXTRAÇÃO ROBUSTA DE VALORES (DÍGITOS, MILHARES, CENTAVOS E POR EXTENSO) ---
+            const wordNumbers = {
+                'cem': 100, 'cento': 100, 'duzentos': 200, 'trezentos': 300, 'quatrocentos': 400,
+                'quinhentos': 500, 'seiscentos': 600, 'setecentos': 700, 'oitocentos': 800, 'novecentos': 900,
+                'mil': 1000, 'dois mil': 2000, 'tres mil': 3000, 'três mil': 3000, 'quatro mil': 4000,
+                'cinco mil': 5000, 'dez mil': 10000, 'vinte': 20, 'trinta': 30, 'quarenta': 40,
+                'cinquenta': 50, 'sessenta': 60, 'setenta': 70, 'oitenta': 80, 'noventa': 90,
+                'dez': 10, 'onze': 11, 'doze': 12, 'treze': 13, 'quatorze': 14, 'catorze': 14,
+                'quinze': 15, 'dezesseis': 16, 'dezessete': 17, 'dezoito': 18, 'dezenove': 19,
+                'um': 1, 'dois': 2, 'tres': 3, 'três': 3, 'quatro': 4, 'cinco': 5,
+                'seis': 6, 'sete': 7, 'oito': 8, 'nove': 9
+            };
+
+            let tempT = t.replace(/(\d+(?:[.,]\d+)?)\s*mil\b/g, (match, p1) => {
+                let nStr = p1.replace(',', '.');
+                return (parseFloat(nStr) * 1000).toString();
+            });
+            tempT = tempT.replace(/(\d)\.(\d{3})/g, '$1$2');
+
+            const matchCents = tempT.match(/(\d+)\s*(?:reais|real)?\s*e\s*(\d{1,2})\s*(?:centavos?)?/i);
+            if (matchCents) {
+                amount = parseFloat(`${matchCents[1]}.${matchCents[2]}`);
             } else {
-                desc = desc.replace(/(gastei|paguei|comprei|registra|lança|anota|pra mim|um gasto|uma despesa|uma receita)/ig, '').trim();
-                desc = desc.replace(new RegExp(matchNum ? matchNum[0] : '', 'g'), '').replace(/reais|real/ig, '').trim();
+                let strVal = tempT.replace(/reais|real|conto|pila/g, ',')
+                                  .replace(/e\s+\d+\s+centavos?/g, match => match.replace(/\D/g, ''))
+                                  .replace(/centavos?/g, '')
+                                  .replace(/\s+/g, '');
+                const matchNum = strVal.match(/(\d+([.,]\d+)?)/);
+                if (matchNum) {
+                    amount = parseFloat(matchNum[1].replace(',', '.'));
+                } else {
+                    for (const [w1, v1] of Object.entries(wordNumbers)) {
+                        const regexCompound = new RegExp(`\\b${w1}\\s+e\\s+([a-zçãõáéíóú]+)\\b`, 'i');
+                        const m = t.match(regexCompound);
+                        if (m && wordNumbers[m[1]]) {
+                            amount = v1 + wordNumbers[m[1]];
+                            break;
+                        }
+                    }
+                    if (!amount) {
+                        for (const [word, val] of Object.entries(wordNumbers)) {
+                            const r = new RegExp(`\\b${word}\\s*(?:reais|real|conto|pila)?\\b`, 'i');
+                            if (r.test(t)) {
+                                amount = val;
+                                break;
+                            }
+                        }
+                    }
+                }
             }
-            desc = desc.charAt(0).toUpperCase() + desc.slice(1);
+
+            // Categorias Empresariais: Vendas, Serviços, Investimentos, Fornecedores, Impostos, Folha, Marketing, Operacional, Outros
+            if (normT.match(/marketing|anuncio|propaganda|google|facebook|trafego/)) category = 'Marketing';
+            else if (normT.match(/imposto|taxa|darf|das|tribut/)) category = 'Impostos';
+            else if (normT.match(/fornecedor|material|estoque|mercadoria|pecas/)) category = 'Fornecedores';
+            else if (normT.match(/folha|salario|funcionario|equipe|colaborador|pro\s*labore/)) category = 'Folha';
+            else if (normT.match(/servico|consultoria|contrato|honorarios/)) category = 'Serviços';
+            else if (normT.match(/investimento|rendimento|rendeu|cdb|acoes|dividendo/)) category = 'Investimentos';
+            else if (normT.match(/venda|vendi|cliente|faturamento|recebimento|entrou/)) category = 'Vendas';
+            else if (normT.match(/operacional|luz|agua|aluguel|internet|sistema|manutencao/)) category = 'Operacional';
+
+            if (type === 'income' && category === 'Outros') category = 'Vendas';
+
+            // --- LIMPEZA INTELIGENTE DE DESCRIÇÃO ---
+            let desc = text;
+            const empMatch = text.match(/(?:com a|com o|da|do|para a|para o|no|na)\s+([a-zA-Z\u00C0-\u00FF\s]+)/i) ||
+                             text.match(/(?:de|por)\s+([a-zA-Z\u00C0-\u00FF]{3,}(?:\s+[a-zA-Z\u00C0-\u00FF]+)*)/i);
+            if (empMatch && empMatch[1].trim().length > 1) {
+                desc = empMatch[1].replace(/\b(reais|real|mil|conto|gastei|paguei|comprei|recebi|ganhei|caiu|entrou|transferiram|mandaram|depositaram|lucrei|rendeu)\b/ig, '').trim();
+            } else {
+                desc = desc.replace(/\b(gastei|paguei|comprei|recebi|ganhei|caiu|entrou|depositaram|transferiram|mandaram|enviaram|lucrei|rendeu|registra|lança|anota|pra mim|um gasto|uma despesa|uma receita|meu|minha|um|uma)\b/ig, '').trim();
+            }
+            
+            desc = desc.replace(/\b\d+([.,]\d+)?\b/g, '')
+                       .replace(/\b(reais|real|mil|conto|pila)\b/ig, '')
+                       .replace(/^(?:me|um|uma|de|do|da|no|na|pelo|via|para|pro|com)\s+/i, '')
+                       .replace(/\s+(?:de|do|da|no|na|pro|para|com)$/i, '')
+                       .replace(/\s+/g, ' ')
+                       .trim();
+
+            if (desc.length > 0) {
+                desc = desc.charAt(0).toUpperCase() + desc.slice(1);
+            }
             if (desc.length > 40) desc = desc.substring(0, 40) + '...';
-            if (desc.trim() === '') desc = category;
+
+            if (!desc || desc.length < 3 || /^(me|pix|de|do|da)$/i.test(desc)) {
+                if (type === 'income') {
+                    if (normT.includes('salario')) desc = 'Salário';
+                    else if (normT.includes('comissao')) desc = 'Comissão';
+                    else if (normT.includes('venda') || normT.includes('vendi')) desc = 'Venda';
+                    else if (normT.includes('pix')) desc = 'Pix Recebido';
+                    else if (normT.includes('transfer')) desc = 'Transferência Recebida';
+                    else if (normT.includes('deposit')) desc = 'Depósito Recebido';
+                    else if (normT.includes('rend')) desc = 'Rendimento';
+                    else desc = 'Recebimento';
+                } else {
+                    desc = category && category !== 'Outros' ? category : 'Despesa';
+                }
+            }
 
             openModal(type);
             if (amount > 0) document.getElementById('b-val').value = amount.toFixed(2);
             
             const catSelect = document.getElementById('b-cat');
-            for (let i = 0; i < catSelect.options.length; i++) {
-                if (catSelect.options[i].value.toLowerCase().includes(category.toLowerCase())) {
-                    catSelect.selectedIndex = i; break;
+            if (catSelect) {
+                const normCat = category.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+                for (let i = 0; i < catSelect.options.length; i++) {
+                    const normOpt = catSelect.options[i].value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+                    if (normOpt.includes(normCat)) {
+                        catSelect.selectedIndex = i; break;
+                    }
                 }
             }
             
