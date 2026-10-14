@@ -7,6 +7,11 @@ window.onerror = function(msg, url, line, col, error) {
 };
 
 // ========================================================
+// VERSÃO OFICIAL DO SISTEMA PROFINANCE
+// ========================================================
+window.PROFINANCE_VERSION = 'v2.1';
+
+// ========================================================
 // ENGINE DE ISOLAMENTO MULTI-TENANT (SCOPED STORAGE)
 // ========================================================
 const SYNC_KEYS = [
@@ -266,6 +271,32 @@ window.getActiveUserScope = getActiveUserScope;
             font-weight: 500;
             color: var(--text-muted);
             letter-spacing: 0.2px;
+        }
+
+        .app-version-badge {
+            font-size: 0.65rem;
+            font-weight: 800;
+            padding: 2px 7px;
+            border-radius: 6px;
+            background: rgba(56, 189, 248, 0.15);
+            color: #38BDF8;
+            border: 1px solid rgba(56, 189, 248, 0.35);
+            margin-left: 8px;
+            letter-spacing: 0.5px;
+            text-shadow: none;
+            box-shadow: 0 0 10px rgba(56, 189, 248, 0.12);
+            transition: all 0.2s ease;
+            cursor: default;
+            user-select: none;
+            display: inline-flex;
+            align-items: center;
+            vertical-align: middle;
+        }
+
+        .app-version-badge:hover {
+            background: rgba(56, 189, 248, 0.25);
+            border-color: #38BDF8;
+            transform: translateY(-1px);
         }
 
         .header-toolbar {
@@ -3084,7 +3115,7 @@ window.getActiveUserScope = getActiveUserScope;
                 </svg>
             </div>
             <div>
-                <h1><span class="logo-pro">Pro</span><span class="logo-finance">Finance</span></h1>
+                <h1><span class="logo-pro">Pro</span><span class="logo-finance">Finance</span><span class="app-version-badge" id="app-version-badge" title="Versão oficial do sistema">v2.1</span></h1>
                 <span class="subtitle" id="app-subtitle">Gestão Financeira Descomplicada</span>
             </div>
         </div>
